@@ -1,0 +1,142 @@
+name: Build SGP Client 1.6.1
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/workflows/build-client-1.6.1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download exact SGP Client 1.6.0 release asset
+        run: |
+          set -euo pipefail
+          curl -fL -o SGP_ClientPatch_1.6.0.zip \
+            https://github.com/KNRDNB/sgp-updates/releases/download/v1.6.0/SGP_ClientPatch_1.6.0.zip
+          echo "87c37a5bdbce358c0364c579bc2f6cae8bdc5bca9b36ff69b16b2c9edba5d811  SGP_ClientPatch_1.6.0.zip" | sha256sum -c -
+
+      - name: Extract and patch
+        run: |
+          set -euo pipefail
+          mkdir work
+          unzip -q SGP_ClientPatch_1.6.0.zip -d work
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("work")
+          manifests = list(root.rglob("patch.json"))
+          if len(manifests) != 1:
+              raise SystemExit(f"Expected exactly one patch.json, found: {manifests}")
+          manifest_path = manifests[0]
+          data = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+
+          print("manifest path:", manifest_path)
+          print("manifest before:", json.dumps(data, ensure_ascii=False, indent=2))
+
+          if data.get("toVersion") != "1.6.0":
+              raise SystemExit(f"Unexpected toVersion: {data.get('toVersion')!r}")
+          data["toVersion"] = "1.6.1"
+
+          versions = data.get("fromVersions")
+          if not isinstance(versions, list):
+              raise SystemExit("fromVersions is not a list")
+          if "1.6.0" not in versions:
+              versions.append("1.6.0")
+
+          # Keep all previous cumulative source versions intact.
+          required = [
+              "1.0.0","1.0.1","1.0.2","1.0.3","1.1.0","1.2.0","1.2.1",
+              "1.3.0","1.3.1","1.3.2","1.3.3","1.4.0",
+              "1.5.0","1.5.1","1.5.2","1.5.3","1.6.0"
+          ]
+          missing = [v for v in required if v not in versions]
+          if missing:
+              raise SystemExit(f"Cumulative manifest is missing versions: {missing}")
+          if "1.5.4" in versions:
+              raise SystemExit("Unofficial 1.5.4 must not be accepted")
+
+          manifest_path.write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8"
+          )
+
+          candidates = list(root.rglob("create-client.toml"))
+          if len(candidates) != 1:
+              raise SystemExit(f"Expected exactly one create-client.toml, found: {candidates}")
+          cfg = candidates[0]
+          text = cfg.read_text(encoding="utf-8")
+          old = 'syncRecipeViewerSearch = "SYNC_BOTH"'
+          new = 'syncRecipeViewerSearch = "NONE"'
+          if old not in text:
+              raise SystemExit("Expected SYNC_BOTH setting not found in create-client.toml")
+          if text.count(old) != 1:
+              raise SystemExit(f"Expected exactly one SYNC_BOTH setting, got {text.count(old)}")
+          cfg.write_text(text.replace(old, new), encoding="utf-8")
+          print("patched config:", cfg)
+
+          readmes = [p for p in root.rglob("README.txt") if p.is_file()]
+          if len(readmes) == 1:
+              readme = readmes[0]
+              existing = readme.read_text(encoding="utf-8-sig", errors="replace")
+              note = (
+                  "SGP Client 1.6.1\n"
+                  "================\n\n"
+                  "Hotfix: отключена двусторонняя синхронизация строк поиска "
+                  "JEI и Create Stock Keeper.\n"
+                  "create-client.toml: syncRecipeViewerSearch = NONE.\n\n"
+                  "Остальное содержимое соответствует cumulative target state 1.6.0.\n\n"
+              )
+              readme.write_text(note + existing, encoding="utf-8")
+          else:
+              print("README.txt count:", len(readmes), "- leaving README unchanged")
+          PY
+
+      - name: Static validation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("work")
+          manifest = next(root.rglob("patch.json"))
+          data = json.loads(manifest.read_text(encoding="utf-8"))
+          assert data["toVersion"] == "1.6.1"
+          assert "1.6.0" in data["fromVersions"]
+          assert "1.5.4" not in data["fromVersions"]
+
+          cfg = next(root.rglob("create-client.toml"))
+          t = cfg.read_text(encoding="utf-8")
+          assert 'syncRecipeViewerSearch = "NONE"' in t
+          assert 'syncRecipeViewerSearch = "SYNC_BOTH"' not in t
+
+          print("STATIC VALIDATION PASS")
+          print("fromVersions:", data["fromVersions"])
+          print("manifest:", manifest)
+          print("config:", cfg)
+          PY
+
+      - name: Build ZIP
+        run: |
+          set -euo pipefail
+          cd work
+          zip -qr ../SGP_ClientPatch_1.6.1.zip .
+          cd ..
+          sha256sum SGP_ClientPatch_1.6.1.zip | tee SGP_ClientPatch_1.6.1.zip.sha256
+          unzip -l SGP_ClientPatch_1.6.1.zip | sed -n '1,120p'
+
+      - name: Upload candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ClientPatch_1.6.1_candidate
+          path: |
+            SGP_ClientPatch_1.6.1.zip
+            SGP_ClientPatch_1.6.1.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
