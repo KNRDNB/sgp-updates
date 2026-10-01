@@ -99,13 +99,16 @@ jobs:
           note = (
               "SGP Client 1.6.1\n"
               "================\n\n"
-              "Hotfix: исправлена синхронизация строк поиска JEI и Create Stock Keeper.\n"
-              "Целевое значение: config/create-client.toml -> "
-              "syncRecipeViewerSearch = NONE.\n"
-              "Исправление точечное: пользовательский create-client.toml целиком не заменяется.\n\n"
+              "Minecraft 1.21.1 | NeoForge 21.1.249 | Java 21\n\n"
+              "Hotfix:\n"
+              "- исправлена синхронизация строк поиска JEI и Create Stock Keeper;\n"
+              "- config/create-client.toml: syncRecipeViewerSearch = NONE;\n"
+              "- изменение выполняется точечно, пользовательский create-client.toml целиком не заменяется.\n\n"
+              "1.6.1 является cumulative patch и сохраняет полный target state SGP Client 1.6.0.\n"
+              "Поддерживаемые source versions: 1.0.0-1.5.3 и 1.6.0.\n"
+              "Неофициальный test 1.5.4 не поддерживается.\n"
           )
-          old = readme.read_text(encoding="utf-8-sig", errors="replace") if readme.exists() else ""
-          readme.write_text(note + old, encoding="utf-8")
+          readme.write_text(note, encoding="utf-8")
           PY
 
       - name: Static manifest validation
