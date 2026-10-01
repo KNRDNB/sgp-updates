@@ -182,36 +182,50 @@ jobs:
         run: |
           set -euo pipefail
           SHA="$(sha256sum SGP_ClientPatch_1.6.1.zip | awk '{print $1}')"
-          cat > RELEASE_NOTES.md <<EOF
-          ## SGP Client 1.6.1
 
-          Hotfix для Minecraft 1.21.1 / NeoForge 21.1.249.
+          python - <<PY
+          from pathlib import Path
+          sha = "$SHA"
+          Path("RELEASE_NOTES.md").write_text(f"""## SGP Client 1.6.1
 
-          ### Исправлено
-          - Отключена синхронизация строк поиска JEI и Create Stock Keeper.
-          - `config/create-client.toml`: `syncRecipeViewerSearch = "NONE"`.
-          - Исправление применяется точечно через manifest; пользовательский `create-client.toml` целиком не заменяется.
+Hotfix для Minecraft 1.21.1 / NeoForge 21.1.249.
 
-          ### Совместимость
-          Cumulative update поддерживает SGP Client:
-          `1.0.0–1.5.3` и `1.6.0`.
+### Исправлено
+- Отключена синхронизация строк поиска JEI и Create Stock Keeper.
+- `config/create-client.toml`: `syncRecipeViewerSearch = "NONE"`.
+- Исправление применяется точечно через manifest; пользовательский `create-client.toml` целиком не заменяется.
 
-          Неофициальный test `1.5.4` намеренно не поддерживается.
+### Совместимость
+Cumulative update поддерживает SGP Client:
+`1.0.0–1.5.3` и `1.6.0`.
 
-          Minecraft: **1.21.1**  
-          NeoForge: **21.1.249**  
-          Java: **21**
+Неофициальный test `1.5.4` намеренно не поддерживается.
 
-          ### SHA-256
-          `$SHA`
-          EOF
+Minecraft: **1.21.1**  
+NeoForge: **21.1.249**  
+Java: **21**
+
+### SHA-256
+`{sha}`
+""", encoding="utf-8")
+          PY
+
+          OLD_ID="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name=="v1.6.1" and .draft==true) | .id' | head -n1 || true)"
+          if [ -n "$OLD_ID" ]; then
+            echo "Removing failed draft release $OLD_ID"
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$OLD_ID"
+          fi
 
           gh release create v1.6.1 SGP_ClientPatch_1.6.1.zip             --repo "$GITHUB_REPOSITORY"             --title "SGP Client 1.6.1"             --notes-file RELEASE_NOTES.md             --draft             --target main
 
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.6.1" > release.json
-          python - <<'PY'
+          RID="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name=="v1.6.1" and .draft==true) | .id' | head -n1)"
+          test -n "$RID"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RID" > release.json
+
+          ASSET_ID="$(python - <<'PY'
           import json, pathlib
           r=json.loads(pathlib.Path("release.json").read_text())
+          assert r["tag_name"]=="v1.6.1"
           assert r["draft"] is True
           assert r["prerelease"] is False
           assets=r["assets"]
@@ -220,28 +234,45 @@ jobs:
           assert a["name"]=="SGP_ClientPatch_1.6.1.zip", a
           assert a["state"]=="uploaded", a
           assert a["size"]==pathlib.Path("SGP_ClientPatch_1.6.1.zip").stat().st_size
-          print("DRAFT ASSET VERIFY PASS", a.get("digest"))
+          print(a["id"])
           PY
+          )"
 
-          mkdir verify-draft
-          gh release download v1.6.1 --repo "$GITHUB_REPOSITORY"             --pattern "SGP_ClientPatch_1.6.1.zip" --dir verify-draft
-          echo "$SHA  verify-draft/SGP_ClientPatch_1.6.1.zip" | sha256sum -c -
-          unzip -t verify-draft/SGP_ClientPatch_1.6.1.zip
+          gh api -H "Accept: application/octet-stream"             "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID" > verify-draft.zip
+          echo "$SHA  verify-draft.zip" | sha256sum -c -
+          unzip -t verify-draft.zip
+          echo "DRAFT ASSET VERIFY PASS: release=$RID asset=$ASSET_ID sha=$SHA"
+
+          echo "release_id=$RID" >> "$GITHUB_ENV"
+          echo "release_sha=$SHA" >> "$GITHUB_ENV"
 
       - name: Publish stable and live-public smoke
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          SHA="$(sha256sum SGP_ClientPatch_1.6.1.zip | awk '{print $1}')"
+          RID="$release_id"
+          SHA="$release_sha"
 
-          gh release edit v1.6.1 --repo "$GITHUB_REPOSITORY" --draft=false
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RID" -F draft=false > published.json
 
           rollback_to_draft() {
-            gh release edit v1.6.1 --repo "$GITHUB_REPOSITORY" --draft=true || true
+            echo "Live-public smoke failed; returning release to Draft"
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RID" -F draft=true >/dev/null || true
           }
           trap rollback_to_draft ERR
 
+          python - <<'PY'
+          import json, pathlib
+          r=json.loads(pathlib.Path("published.json").read_text())
+          assert r["tag_name"]=="v1.6.1"
+          assert r["draft"] is False
+          assert r["prerelease"] is False
+          assert r["published_at"]
+          print("PUBLIC RELEASE STATE PASS")
+          PY
+
+          rm -f live.zip
           for i in 1 2 3 4 5 6; do
             if curl -fL --retry 2 --retry-delay 2               -o live.zip               "https://github.com/$GITHUB_REPOSITORY/releases/download/v1.6.1/SGP_ClientPatch_1.6.1.zip"; then
               break
@@ -257,12 +288,16 @@ jobs:
           import json, pathlib
           d=json.loads(pathlib.Path("live-patch.json").read_text())
           assert d["patchId"]=="sgp-client-1.6.1"
+          assert d["name"]=="SGP Client 1.6.1"
           assert d["toVersion"]=="1.6.1"
           assert "1.6.0" in d["fromVersions"]
+          assert "1.5.4" not in d["fromVersions"]
           a=next(x for x in d["actions"] if x["actionId"]=="decouple-create-stockkeeper-jei-search")
           assert a["type"]=="textReplaceExact"
           assert a["oldText"]=='syncRecipeViewerSearch = "SYNC_BOTH"'
           assert a["newText"]=='syncRecipeViewerSearch = "NONE"'
+          assert a["expectedOccurrences"]==1
+          assert a["alreadyAppliedText"]=='syncRecipeViewerSearch = "NONE"'
           print("LIVE PUBLIC SMOKE PASS")
           PY
 
