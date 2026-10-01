@@ -20,7 +20,7 @@ jobs:
             https://github.com/KNRDNB/sgp-updates/releases/download/v1.6.0/SGP_ClientPatch_1.6.0.zip
           echo "87c37a5bdbce358c0364c579bc2f6cae8bdc5bca9b36ff69b16b2c9edba5d811  SGP_ClientPatch_1.6.0.zip" | sha256sum -c -
 
-      - name: Extract and patch
+      - name: Extract and patch manifest
         run: |
           set -euo pipefail
           mkdir work
@@ -29,18 +29,18 @@ jobs:
           import json
           from pathlib import Path
 
-          root = Path("work")
-          manifests = list(root.rglob("patch.json"))
-          if len(manifests) != 1:
-              raise SystemExit(f"Expected exactly one patch.json, found: {manifests}")
-          manifest_path = manifests[0]
-          data = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+          p = Path("work/patch.json")
+          data = json.loads(p.read_text(encoding="utf-8-sig"))
 
-          print("manifest path:", manifest_path)
-          print("manifest before:", json.dumps(data, ensure_ascii=False, indent=2))
-
+          if data.get("patchId") != "sgp-client-1.6.0":
+              raise SystemExit(f"Unexpected patchId: {data.get('patchId')!r}")
+          if data.get("name") != "SGP Client 1.6.0":
+              raise SystemExit(f"Unexpected name: {data.get('name')!r}")
           if data.get("toVersion") != "1.6.0":
               raise SystemExit(f"Unexpected toVersion: {data.get('toVersion')!r}")
+
+          data["patchId"] = "sgp-client-1.6.1"
+          data["name"] = "SGP Client 1.6.1"
           data["toVersion"] = "1.6.1"
 
           versions = data.get("fromVersions")
@@ -49,77 +49,108 @@ jobs:
           if "1.6.0" not in versions:
               versions.append("1.6.0")
 
-          # Keep all previous cumulative source versions intact.
           required = [
               "1.0.0","1.0.1","1.0.2","1.0.3","1.1.0","1.2.0","1.2.1",
               "1.3.0","1.3.1","1.3.2","1.3.3","1.4.0",
               "1.5.0","1.5.1","1.5.2","1.5.3","1.6.0"
           ]
-          missing = [v for v in required if v not in versions]
-          if missing:
-              raise SystemExit(f"Cumulative manifest is missing versions: {missing}")
+          if versions != required:
+              raise SystemExit(f"Unexpected cumulative fromVersions: {versions}")
           if "1.5.4" in versions:
               raise SystemExit("Unofficial 1.5.4 must not be accepted")
 
-          manifest_path.write_text(
-              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8"
+          summary = data.get("summary")
+          if not isinstance(summary, list):
+              raise SystemExit("summary is not a list")
+          data["summary"] = [
+              "SGP Client 1.6.1: hotfix синхронизации поиска JEI и Create Stock Keeper.",
+              "Исправлено: строка поиска JEI больше не синхронизируется со строкой поиска Create Stock Keeper.",
+              "Исправление применяется точечно к config/create-client.toml без замены пользовательского client config.",
+              "Все изменения SGP Client 1.6.0 и предыдущих версий сохранены."
+          ]
+
+          actions = data.get("actions")
+          if not isinstance(actions, list):
+              raise SystemExit("actions is not a list")
+
+          matches = [a for a in actions if a.get("actionId") == "decouple-create-stockkeeper-jei-search"]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected one search-decouple action, got {len(matches)}")
+          a = matches[0]
+          if a.get("type") != "tomlEdit" or a.get("target") != "config/create-client.toml":
+              raise SystemExit(f"Unexpected existing search-decouple action: {a}")
+
+          replacement = {
+              "actionId": "decouple-create-stockkeeper-jei-search",
+              "type": "textReplaceExact",
+              "description": "Развязать поиск Create Stock Keeper и JEI: исправить SYNC_BOTH на NONE без замены create-client.toml целиком",
+              "target": "config/create-client.toml",
+              "oldText": 'syncRecipeViewerSearch = "SYNC_BOTH"',
+              "newText": 'syncRecipeViewerSearch = "NONE"',
+              "expectedOccurrences": 1,
+              "alreadyAppliedText": 'syncRecipeViewerSearch = "NONE"'
+          }
+          idx = actions.index(a)
+          actions[idx] = replacement
+
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          readme = Path("work/README.txt")
+          note = (
+              "SGP Client 1.6.1\n"
+              "================\n\n"
+              "Hotfix: исправлена синхронизация строк поиска JEI и Create Stock Keeper.\n"
+              "Целевое значение: config/create-client.toml -> "
+              "syncRecipeViewerSearch = NONE.\n"
+              "Исправление точечное: пользовательский create-client.toml целиком не заменяется.\n\n"
           )
-
-          candidates = list(root.rglob("create-client.toml"))
-          if len(candidates) != 1:
-              raise SystemExit(f"Expected exactly one create-client.toml, found: {candidates}")
-          cfg = candidates[0]
-          text = cfg.read_text(encoding="utf-8")
-          old = 'syncRecipeViewerSearch = "SYNC_BOTH"'
-          new = 'syncRecipeViewerSearch = "NONE"'
-          if old not in text:
-              raise SystemExit("Expected SYNC_BOTH setting not found in create-client.toml")
-          if text.count(old) != 1:
-              raise SystemExit(f"Expected exactly one SYNC_BOTH setting, got {text.count(old)}")
-          cfg.write_text(text.replace(old, new), encoding="utf-8")
-          print("patched config:", cfg)
-
-          readmes = [p for p in root.rglob("README.txt") if p.is_file()]
-          if len(readmes) == 1:
-              readme = readmes[0]
-              existing = readme.read_text(encoding="utf-8-sig", errors="replace")
-              note = (
-                  "SGP Client 1.6.1\n"
-                  "================\n\n"
-                  "Hotfix: отключена двусторонняя синхронизация строк поиска "
-                  "JEI и Create Stock Keeper.\n"
-                  "create-client.toml: syncRecipeViewerSearch = NONE.\n\n"
-                  "Остальное содержимое соответствует cumulative target state 1.6.0.\n\n"
-              )
-              readme.write_text(note + existing, encoding="utf-8")
-          else:
-              print("README.txt count:", len(readmes), "- leaving README unchanged")
+          old = readme.read_text(encoding="utf-8-sig", errors="replace") if readme.exists() else ""
+          readme.write_text(note + old, encoding="utf-8")
           PY
 
-      - name: Static validation
+      - name: Static manifest validation
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
           from pathlib import Path
 
-          root = Path("work")
-          manifest = next(root.rglob("patch.json"))
-          data = json.loads(manifest.read_text(encoding="utf-8"))
+          data = json.loads(Path("work/patch.json").read_text(encoding="utf-8"))
+          assert data["schemaVersion"] == 1
+          assert data["patchId"] == "sgp-client-1.6.1"
+          assert data["name"] == "SGP Client 1.6.1"
+          assert data["targetPackId"] == "sgp-neoforge-1.21.1-client"
+          assert data["minecraft"] == "1.21.1"
+          assert data["neoforge"] == "21.1.249"
           assert data["toVersion"] == "1.6.1"
-          assert "1.6.0" in data["fromVersions"]
+          assert data["fromVersions"][-1] == "1.6.0"
           assert "1.5.4" not in data["fromVersions"]
 
-          cfg = next(root.rglob("create-client.toml"))
-          t = cfg.read_text(encoding="utf-8")
-          assert 'syncRecipeViewerSearch = "NONE"' in t
-          assert 'syncRecipeViewerSearch = "SYNC_BOTH"' not in t
+          a = next(x for x in data["actions"] if x["actionId"] == "decouple-create-stockkeeper-jei-search")
+          assert a == {
+              "actionId": "decouple-create-stockkeeper-jei-search",
+              "type": "textReplaceExact",
+              "description": "Развязать поиск Create Stock Keeper и JEI: исправить SYNC_BOTH на NONE без замены create-client.toml целиком",
+              "target": "config/create-client.toml",
+              "oldText": 'syncRecipeViewerSearch = "SYNC_BOTH"',
+              "newText": 'syncRecipeViewerSearch = "NONE"',
+              "expectedOccurrences": 1,
+              "alreadyAppliedText": 'syncRecipeViewerSearch = "NONE"'
+          }
+
+          # Simulate the exact editor semantics on the owner's current config shape:
+          sample = '''\t[client.recipeViewerIntegration]\n\t\tsyncRecipeViewerSearch = "SYNC_BOTH"\n'''
+          old = a["oldText"]; new = a["newText"]; marker = a["alreadyAppliedText"]
+          assert sample.count(old) == a["expectedOccurrences"]
+          changed = sample.replace(old, new)
+          assert changed.count(marker) == 1
+          assert changed.count(old) == 0
+          # Idempotency via alreadyAppliedText.
+          assert changed.count(old) == 0 and changed.count(marker) == a["expectedOccurrences"]
 
           print("STATIC VALIDATION PASS")
+          print("actions:", len(data["actions"]))
           print("fromVersions:", data["fromVersions"])
-          print("manifest:", manifest)
-          print("config:", cfg)
           PY
 
       - name: Build ZIP
@@ -129,7 +160,8 @@ jobs:
           zip -qr ../SGP_ClientPatch_1.6.1.zip .
           cd ..
           sha256sum SGP_ClientPatch_1.6.1.zip | tee SGP_ClientPatch_1.6.1.zip.sha256
-          unzip -l SGP_ClientPatch_1.6.1.zip | sed -n '1,120p'
+          unzip -t SGP_ClientPatch_1.6.1.zip
+          unzip -p SGP_ClientPatch_1.6.1.zip patch.json | python -m json.tool >/dev/null
 
       - name: Upload candidate artifact
         uses: actions/upload-artifact@v4
