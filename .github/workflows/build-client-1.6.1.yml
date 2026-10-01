@@ -183,32 +183,28 @@ jobs:
           set -euo pipefail
           SHA="$(sha256sum SGP_ClientPatch_1.6.1.zip | awk '{print $1}')"
 
-          python - <<PY
-          from pathlib import Path
-          sha = "$SHA"
-          Path("RELEASE_NOTES.md").write_text(f"""## SGP Client 1.6.1
-
-Hotfix для Minecraft 1.21.1 / NeoForge 21.1.249.
-
-### Исправлено
-- Отключена синхронизация строк поиска JEI и Create Stock Keeper.
-- `config/create-client.toml`: `syncRecipeViewerSearch = "NONE"`.
-- Исправление применяется точечно через manifest; пользовательский `create-client.toml` целиком не заменяется.
-
-### Совместимость
-Cumulative update поддерживает SGP Client:
-`1.0.0–1.5.3` и `1.6.0`.
-
-Неофициальный test `1.5.4` намеренно не поддерживается.
-
-Minecraft: **1.21.1**  
-NeoForge: **21.1.249**  
-Java: **21**
-
-### SHA-256
-`{sha}`
-""", encoding="utf-8")
-          PY
+          printf '%s\n' \
+            '## SGP Client 1.6.1' \
+            '' \
+            'Hotfix для Minecraft 1.21.1 / NeoForge 21.1.249.' \
+            '' \
+            '### Исправлено' \
+            '- Отключена синхронизация строк поиска JEI и Create Stock Keeper.' \
+            '- `config/create-client.toml`: `syncRecipeViewerSearch = "NONE"`.' \
+            '- Исправление применяется точечно через manifest; пользовательский `create-client.toml` целиком не заменяется.' \
+            '' \
+            '### Совместимость' \
+            'Cumulative update поддерживает SGP Client:' \
+            '`1.0.0–1.5.3` и `1.6.0`.' \
+            '' \
+            'Неофициальный test `1.5.4` намеренно не поддерживается.' \
+            '' \
+            'Minecraft: **1.21.1**' \
+            'NeoForge: **21.1.249**' \
+            'Java: **21**' \
+            '' \
+            '### SHA-256' \
+            "`$SHA`" > RELEASE_NOTES.md
 
           OLD_ID="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.tag_name=="v1.6.1" and .draft==true) | .id' | head -n1 || true)"
           if [ -n "$OLD_ID" ]; then
