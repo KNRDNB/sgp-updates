@@ -2,7 +2,8 @@ name: Publish SGP Client 1.6.2
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - ".github/workflows/publish-client-1.6.2.yml"
 
@@ -14,33 +15,46 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      EXPECTED_SHA: 1a864e6187875304319418b09f1b48082b782b77130530686060f7eb442c8896
+      REPO: ${{ github.repository }}
+      TAG: v1.6.2
       ASSET: SGP_ClientPatch_1.6.2.zip
+      EXPECTED_SHA: 1a864e6187875304319418b09f1b48082b782b77130530686060f7eb442c8896
     steps:
-      - name: Recreate exact accepted artifact
+      - uses: actions/checkout@v4
+
+      - name: Recreate and validate exact accepted artifact
         shell: bash
         run: |
-          cat > asset.b64 <<'EOF'
-UEsDBBQAAAAIALy6Ql0ErjpDxCIAAD/gAAAKAAAAcGF0Y2guanNvbu09a28bR5Lf91cQBhb3JXKQ4HDABXcHyJL8lq0TlXh3L4tFi2yJEw1nuDNDyfJiAT38yCKJ397k5JfkJBffh+BoSbSpFwXsLyD/wv2Sq64eSqyqJuPIspLccoO1zeqe7uruquqqrurqP/0qkzkW5wq6qD7SUeyFwbEPMu+9Y6AlleQKZ/Lw+1g8WerL+Z4Okr73jv/T8fePYYVAFbUpzZ4ayQxgaaatNFHRpE5GVG5qv41AhxMhgKGV9987/l7apq1f9AKdi9REYirb8rSb9CMDN9Dj7//jP9uSiSgspljHUPofAMuYb/8JPoV//97iEe4P7FgbfpGOAcVkVP+x7EXaoJhEZY1FcblYVNHsfpON5eZic75Ra15t1BqbjUrzOvz7Vqax1qg2dhrV5pwFNWoZ+GO7eaexk+kvhUlBh7EXH8f+TCvPGvXmDah+Az6qZxrb5uvmrebN5kJzHpqDPxabf4Hy+eZCYxX+fRN+1RpVKGjsQofz0DX0UIfSeuOF6bTxEv5fhR4/a17b6/pdaL+CbVQbG/vQxi58UbUjgKbqjdV3scOr7aB3MoBapfGqsQp/7uAgoZ0adA+FGdtEY91gjkjY+lWAL5oOm58BskWV6MhTfiav41zklZIwijMG73XTaAaWEmpk4iTygsn2qak2r2GPZoJwpNAW/LUFs3CjUXsnE+lJD76afXevgzOD8TumSh3wsXO5AAOfS9fBYmsmHFt6ZQZmGk+HZYj3D5M60JFKgDiO5yYmcSzwGS5o1U45DAmwbi3R8X2yUrmEkN2f8M+9AkvzUblP7dFBn+myz/4VpwM39DlbQtJO9GUgxpKvcnroMjSyX6M1kSkNdyDGfYLDsWX2x/ZB5gLrElnTtJULgwlv8t19JN91zMv+h6GfHwM0zZfmd/YDbDjzLx9HHweZ9H8nvDhX9pJ20JDvxSrI63bYJc/3wxn6Yak0SwDlJAnbASORV2z/PTYbKe2TT9QnYRSQj4a9XAFqZYbDaNwrx6RIgvqjckC6VIG+0g4YDMNinFcE0Y8UzJqKyPAKKhkr6EFobqodfh4mOlJXaOWBgvb9WQ7xcp4iPasoLjAAYF9g3+lYZ4YyI54fXlF0eoPJ9t+j4awic3chvKRmT+uILFN2RgVTs9kEECStnYnDWBV0PgrJdPXHEwoWm/ZL5u9Mzsv5mg1jiqxYtqDy4Qxp5JwCmvUCgsJJZWYtoMBBz/emPUoUZxVdg35/XEeEQPuDfKRnGAR2DTa4ID9L2/EVrRAlhTJZ2X7FJ8iH6WGgCPClU9JfBHZRtO9As98e+4ThpujEnIigSdoxgOiATugoUFGeggL28xMFOzWBhePsp04STTsKwyktsGF9K9gScprB6E9GhCd0boqyjYr8hA7SgOhvf9pjNYo6Eh+xRRooqFjTKrGRaZHiQI9XYw2HPkePc37ksa4KUClkc2rqzfocRS+ZpawVBBQQqSnGfAHjlkEdRQyipr08A9BGwiCcpqwwGPKfyqdtMIYz3Xq5KSYY6HpDK4zbw0jJ0VBeGsrPMJoeAh4M6QZFy/Ns8Yc4UQ3l85yLhxidDcFo+O9YtsJQ9cw8khUbAlWU7aVXFHBYQQAJIC7BBh44gBQAlA/rQmsVPfaTEuiQrzwqi04asQHChcHynoESIOjZtBKfAVODL9fJiMlvBPiUiU/CfnmZA9gGar5r/30KVEr+O4zIYE9pY3lQSMQo+RTbl2wNNken1Pg4afm0BuFBUQYQ7f10OD6uY1ol4nvXaRCcBd6y2LtOa39SsZbYb18HAkCrgDRRpKszVJicAZGYowCuoJ2JixwCTM42uzMxUDhj4zORDgSAru9Zr0g3wbNUXTxbjhNKNWdVjm5eZ5l4PEtn8WxYCGIOYiIWALAgilWiapr5Xaa4l32PfaNjqpqehY0hVwgpaJx9Qr8IWZOgc/PfstfYy1HUNOgaE1RyGNgsA9Dh0N39HNRnMuscb+IcbeKc9vgHbOM+pyL2iWtPPif25PM65GoOgOjPKJylANYCw/18mdLN+XKObvznPVWkdkAUcTl6HpTcuKAoqMzGeF79sezxWqDyUsBsngE8n/+mUv28JAUAsRU4z3TKYcWYYdij0wC215SepZ9EHjXPuIoCNabY7xwz21TE+NhAWCMJGLQzHER/X2Y/vaKcBNNygQ6JTQGoLVQoDiupHSBM84kAaqVNR1wSQq1ZgQ6tof2QmQIGRNlvmIrcYY9bDxeEyLIQphsCkH5G9/MLTIG7YM56AlajEPqUNS5IsjcNeawlWoEbzBfYJnwxmvbYDnIRLEMqxS7i1kPI8eIMZbeLfswAeY9VUBO0zUTTndb0S4lmBE2dKQaiP8tk4kdAOybjHYElDHMFyksj0oSyINa95ss/opNyIHBMPIZCwDflfy+rPAN4QW6WQnTAuNVUCuhRhFFqQgYapziO0p3afsMONOhPn6mfo8IIGTVnQxEHTfHfrN2Y4UW5eLQQMiYe1eM6R/dUiz0BZUsg+GbpOYjnh0S0ZBNdKlB6BBA1xrKMdLIFzb4AvqZfaMqkWVUsMfkFoDIVBQChyhYgMsHbYWydpXtgthyzD8pX2ARon2rN0IIKmASEWmx3gxFGHH8mL3AmFWODrFAesvyYIquoOTDGTiQLYZFKNwPhszk2KwA+lUxjIT/oDAPebzFMCgS3MXMIqSiEWR0A8Nj0jWm2DY15vJVZ+vvDiG0LH0axoivwITVaP/JySRhRSJADwSBA7FiVATymK3ykfVdHVJJ9ZE53mE57yfPZElziFGIAKifOrNlvJj0uoQZRZCAgYwL6jZr26Hr/RlDeb8MyPa/97XTIzgB/GwrL6XcqV+C/21WIf9s/yw/0zA+e5TfupG6nVfh7gZR839jCMuMmWm9USdnXjRqUbjXqzUXeWmPX+FUotLnYXDDuJAJ9io6cbQJ7Bj0aV9sXja3m56zlCmDxEnqcM741UvYIyjaMJ8n801R4Ac0sNudZpU4lt5tzzcXGDkUOh11tvCLQ+1BvG6ZkHRDcICV3sX6lsW38U2yqjDvvS2jrPjr0dhqbpPyhKceSV+Lb7+ArM801B7SGHqJbFD/TQvNTCcNRf8paqTVeZRoPzFjNYtZN/2IxzdK/JNBlqLkB2G4R6GNDCo2vzbw0vjWLSEpXoPcvzMihxRV0W5pR0d6+gv7rhtyg5rrx67EVud2cb141/ZqRCzzpOt1ubJjZMSThmItNRj7PTY+IP21lCWq3/I07DNtvLJEabKCMl97HGa0hU0lSvo9OXU4Ht+GLF8YxKdhwx8xH8yarjUwJ8Hk5U1hWE61vmV4F5S+YVljdimv+7Whd/eEMmdIq+2I7FR4Vgd+OqGtgNfG9HEVFzPadlK/WBWa2hM/FHXT/7uAo13kJbwHdyeu4YttmrVlpvfFCQozv3MwrxwUobFNCU9xrQiwvIN/O8y/kaBzcZKCbrOYSjngL/fo7rhIOg1ZXxZiXcCaqDgrBVhz08Z0JVmCjWMIAhnRzMXPgLJX4zzvwrkvMzWik1HTO5/O0dh3XrMLKqpa2HeOpmbAJLl0cVHwfQw02GLfbujUhnwxHm/pCbuFKrDugVQarm+3RRnfIEkdds8rrDoxXnZjV5Dhw9iqOlqVUrIuV3psHIT2+t+EkgkcfpFK3zuTkA1Fv3UGLD5z0D3UNBzrqfyX44oGlIglLI2ycLQtYrbVGosxEulSkImZ2ZytZxGzUxM79PcYTVa1sMVzGsE1LxTfb6TewYwmp/UBIY4QIPjMzbLQALuG/aUldK6kdZet2nzXltNTGJPEvHDOb1nTSzTdO7WsPandy0ceWXVcXHDWMiqs1AruX4vTSAV1DjqgJ7aCOs/FSwNPVEXLgpUNDIfWxnK7HPaSnF6z3b+1+16Jn9oWJwJoTX5gd7wWr+y327dJnvhWGRtpnB23mW5ztNTY6237FUbPq/L4q5ufbVFpXmte47ig0sw3gsCqDgr7awVT5CjnJXTKXajDrDu0X+dv5TdUhldIwNwclbAtOTeEcZmP6BN1b/XRT6DYteFXSq6OFOkqeDiVyl0zhqHG7vhFWDcJAo6rIUSHXViQdYDTkvJNLasIqwBLHDJhW5h24u7DGfc0NdWC417qN+nNgg/MGVhCX3W2lLrhjhtaFbmW/5/vLkrPdJdHqkuBqU8epPTro+SDa4ENope7U4rGEQ1BP3GBQ2aIc68PmTW6xox7PddGHuKLbwrafS/W/HVZibctP2VjxCzE/D5Hvao7a1sa8JaDrTuiW43t5vvCwI4XaEr7SDx022SPUkTn3pwc1DGaondsqj1K7Wx70yBWydTddMMcpUAVt3prEzMIptPkFWAWfM9vbQhcEZpuyL9QJa6me5JrRtF8xIxVHLTMffLd6hPatW3fdK3PNrOU33u+eNVoRI55ztSMspke429Yda2Th6y64GL1c48fOnWEPKiwpW1JlMK5FPhb2zGPkv21HT7hDGA5iq/y4Ayc/dtL1Y4cN9Nh5yvfYodM9gW9XHbvKk/S0ie8LT9r0jTorwRM53oqxjgV0XXDLE5yHq7wvPNnjmloLN07TT828OSxKhDMIt/CftqxRBq2h7Yuzzg+bW70J+7+9ROLo2hGe4vnOokP/sm0tOOrP4Wky1+2W0AZcF2cjuG86zj9W0zsQYlcFbJBrxEltqoGz2bAlXPdfFhpfWwvyDFhAthy223KHM4ZlvAci9+5lQQ8IkZiKdbQwun7LzWvYP5dny0azwxOyTVGyP2e0ZAVsZnt6XGNnRHh6zuTyCq7SquCmFM5a5vT9XKzwc4cO8VxI/BU8m9t17AVYAlTCpa39gtsLeEaPp+2iFSHnVoTWs4K3V8S35nxdzF0VT71rDpwq9raPOKnfEFrMc+d59QpS3VbnkTl6dWmfK87z2ZXUHVXl7ivh0KqjLTjvgLrW6ZlzJ3+GetOWkO/YjsOBVhfW/rPULqwL6fSs5bVi437mPB+w0JpYmWep5VIRvbpargnY1yiBpcX8AM8EKmLNvxanZHfxxGLB7K8CvmP3NSbF9kqkJ88BdWkld5F+u2Aidoi7rZNzh41nvttyrP5dJyW3oBUnrlxDsDApb9GRCxruLUZHFpfP8f6j+Xub7TdmTVYBzilyqaMV9z8AXWNnHqv2LIBA/3N/J2EtfGn0aQmx+qzLAa4vl3Qu0fmLuVw5inSQ03Hr7iuWKz/SKj/bXyr5ns73fOU9X3nPV97zlfd85T1fec9X3vOV93zlPV95z1fe85X3fOU9X3nPV97zlfd85T1fec9X3vOV93zlPV95z1fe85X3fOU9X3nPV97zlfd85T1f+S/WV46u8D+/c4AEt30lFSVHnOX242PGLZ8ZMT1/fOxtpLulPVD/P09Oa5LLknxlZZ7RlCd87ZatVSR/5UlNB1napIsxTahyKlLjNC8FzUF7iiYk6KeJUoZpUouLNAUOTcAasPQXUZeEav00udKJMp2zIVqZFJG5JbknaM46mpzUD0PaAcseS9PClmiWxYjlPY1YUkyCUp7m81AxaTpL5+EkbesSy/lFU998RLOm/E6VWCLKLglcB0UKWJYSMeyS1Y1leh1iKUmHIpbhimX9YfloSU8DkWYZicgoslOUPcboMH5H06WcoGldLoX+BF10mu4zoomVCN9lPZ/lEiHL5rH0yzSj9UCB5gA9xxPxaE2WLvvHMk20elrThCODNEfIKUo1F2Yvs/zINCXdZToSlnuS/BwtsxSfUUjp96QPgpAm1AmjIs/izFLNzlBSLMc0LXPMEq3RHoe9yQJFoUxTYo2y1DwmUzelbSqgPwrpZI9qShdZn2b57me5w2gGHJoilYpSIhcIDh8GncXdGbIiFy9TQRXpbtL/RMRnKzvjTRDAKZZ+PVvgKUt9zfI1ldp76ZZKpts+6YxWS0PKmGtm0RGksCADuF4j1ModzuUKHrrvOAJ9gs6dunA7VhjGz0TYWeoUEaE36/KIlx31sGMiERTFzZq6o2cZXrTgCN95wZzO7BtaSleIKsDCKcgDerZYjOMDV7gXw/E2OxwzAQIidEiMvcIOBr5iM27MPXwjQxwfcMe1NIKkS4Ef9twVJrtRr3e54/EHAqbudwjCkk7x+g+6qmR41QNHYJWZ26p0E8iDNoFVnZkuc66DOzbXm4J3n4kRfynM8jvCeAMjh9HI9+Lw7AHr3RxwrjF8asLQ4zh/YxxHQiItigOnzR9w8Zk6u2I2ZFiSdbhviZCiCgsm4DT6uEOoxYZ0vrFahro3ZQCCgC2LMN9v8LEVzlHfYMDAhjjWsib9tuNgbv2HQq3QLGRhBWxVHqFTRrqVNgR2VUGpyxYLvn+YcGXBdzVh6tfFCJZtSAZb7S0R9nxbOhy6UvADRhe32e+vGG5fi3AqFggh1viJgNzHOZz7wf3SyqkNIV2Ng/Uqg95zxL4/x0O6HVGPz/feQfJhh/f39Jee/tLTX3r6S09/6ekvPf2lp78cof5yMJdLKdIT3uWjflZwRPZ6aK6WVttU+RqMjrce9KOntBE/OqQHtcMqT8+yBkOekfqkAkTpRyGHjISlkmLPeNB3RNiLahendRRr1kgUTug4pr0PR8fZTzO7sZdnSbIH2UMjg+Vcgb36MshOZscKOnM6DMJIjfv8XTHQin2fZ+bO6T530WkggtOh7wWsx1ENw2SnpwNhmaf3jnMcNiQeZyslij/t8UnIHFWGgujy66CkPHo+yjrrdlrpJjWU3anzue1iLNsIvmDiJBXdYuu1EYQVETled3ran2AL14WSvcB8+uZu7W7H2FcZy7suYwEB9iq9KrzgiKt6itvi1TQmof6ao72HEUS7NkqxsWObqZqOTIiWCB+4h2FC16H6Wic4BhiIK7oiYOC+3cPhi13z9CsOaQe+/IztVksYmnDdEQhyF4Z0vVHtMyKwQ5UH5rYJ7gfNW/aVXViA9NVex83sajoRJhxKYoJ2GNP/7qYhkmKeHHWXkARqjpBOS7J1sTR7TxZLYjahNOYrFlByHdfsjpjJQ7K2e/zX478e/x2I/w6mLcbliZ9AW8zKXg9NW2y1TUWI433nwUhNhsF4SEM5RvUnKL2Ev5m+/VIGNZt5vcslHXlUQfnQT7wieyjrPNPJLnlF+tb1QBmaoahmA63og0AjRkVNaEzBQDTLQoWG1CR7ATWKFNW7PgwKoc+faYrNPHMdcZi9DXS6HExSt/tYwYtiOlEntWbNXGJP2vJndIbVpJejSt3wbFLgsPMaKCLP3kS7ECYmLmPWvBqm2YOJU911fjAUyvhYZhKGefq8MhvluYA71E94cSEs0XCMPHtkCPZET/kiEIi/8hRwQLEIVEVX9TzvXwR85fN92SLo7OzDk+WAP2CVm8pkiypmxk02DDLhhHkYNByPWCzAQKRyU5Q/sgl/Getv3031w+4e/O07GoGkxtkbdoHPECpP0meucmyJPwzyYXk84cQJVo2mQSIXwqAvW45LXo5z04mQzyhMGGXRK7OCtekTcxN05S5ORhqjRDSPIDJMoSdYwEYCf0xO0rqj2jw7BMYSfRXahK54gWLUevz4cVikoga+YBx/OYlUnwlGmmXhQZ7vK4MiTDBYxNwmjmA+Y+DNIGDBfwOZUe/KFZ8Zt06D9EQZZHhk4hcnHEaukSg+cJMRiGHkeKk+W4r4/J1WpRKamJn+/HSYY5L0VCGMEyOGmIV/GtRLQ74jYQJd0VdzL3jBJ/T5J/NqI8VnZDYKi8bope9wAXAcqCwzIpa534tKISzqmM4VAvPEHgukU0EexVqcsGd+s7DtTVNeGjOPX08IQQ46NXQw4IflPKCc5BjDAtVMeTozFCSFcuyxAENAAGZwLCzLryYmtIa5zXs5FmDl55EWg4ly3IZfN9PZve92yRBlMzdt2twaGL/9srHuUG1aWjjexGrdyRU1HhnVFPq4AUrIhjz8xjsrq47vrFq4isrqNVQOZZ3b5iY+Hs7fBDxk+V8xanxT9Pwtxnt/Jg6rb8J8gFrc/MzZ2grYIXMdyr7GL9dET08xDv0GjP8voszcIbvDFMwv8cbBlrmzDAoz/+IxzNiNVI2ugWotMTQ3LXZQ1bWR7BLTL/Fm4ga3RdL7iu45NOvvGoG5y2duWfzFte44hrlOcJftZubPjs+xZo+sItux/CHexrO5FcyBrcQIsDWTfgM19c9TJzGaJ06TA/A03HHL4TJz2aOPUyNmx7Qo2lvGjGdreC/OZkKRfS4DbV1HJzK7FYLGyzxy5K5wub3cM6uqHTh03t7ycpY+xVV/2bqn7qR6M0c3Hav/KDU9K87SFZQLCw4+ewZUv+3qKc0MZ26e1O31wmtQzUV436RpTOodmMAw6qJhoBYjtDI57QgX1Qo0sNNKsQET5UyA9gwJdt5gAz1+6iA+kwlQECVoWymVfWrzcjSvM8ULyR6miHuXoJ8fWlhz8WzOPQN2IqFTJxMgQdipcLX7XdpvBwZ6mhrqr3BcneXMCt5Hv9F9naUMtpk+nINadOTxWYLe7zhqG3kMi2Go03iZ1uxMcdIH+sLEVvtUsmJvowoqWcLjksp+xS9R9PFrSm3SZQlJcEHIWnTzWRKTUsSoj43vDLxPRINYhoINE4Wq65zkK7NuyMgv2sd0z97NEm7ep6lcWG+vvNq6YSjuoYLGiddTX8F/W47Ds+7nV3eQWtfMCPrwKOhqlzO0WusebYuybMq8Gl7dk6J3Ga+FwbZt0zXsrSWw1Zy8VWXEiSFvM0JT6YaN0jDXwthaXsMLhGnFV4aSbFzRq1RBqoirpPfwMtdqC+ldI8eW0tQBdRj2prikbyOJXomLc3URf/M0veyYXhYV8smUvLCX7YRn2lxYvNYayW3Mb2CP/+TN37utPFCGf/a3ZaQskcRnbU9xqLTkItS8xVjxJa6Pe5v4HpNG7NpLyOmMPU6VoJuWkqD3m+n8PzHwDnNv1be29X9qtSXDjgwlO11r7fz8DNcUBAlne0OUjhQJKxh1sGYwMT+wY1z05rwNMtky8u+wj+F7unxPl+/p8j1dvqfL93T5ni7f0+V7unxPl+/p8keuyx/MpV/QfvGI/fmnWZeH5szHhqkVYkA6YaGC1EEZzjAHjFYJfkd9kXHsBbSlrPJ91rYfxtrxbTRebnNGdfOLOIYA4tJQwraIFN4V6WuWUnNqpzvLuRq8Y5fOkX/UZnGqMGGMeV+stWJFUadGwQQ0xtNhG51/DxN1MI42cb0JcG5y1HE67o4PjbvbmqfrPrBXQFyj5YAGvJjUBirIswCF06o8zsI9Bsqe8YG+Fr92RAr3mDU08tbtvsg2iEVnAqo7uP+vpanXaq6U2Wg2VsXdg6U0GLA9Adgh8drPfZAH4xNfT056weQRM4mj10PjkFbbdJHOp1AaEBYkBDAGBK8pCNgAYDSyLFeYDcaVn3895nDjg2bBDh4ssFSENhaSaUjP0tTTJuEn051AH8MkugyOqRuBfNJHFNpKD4kffobjOhgLjIfhUeda410eGvFjw3RFThgQjZBjAT5G2ZtmNK7GVRIGFBaCphe180c3sndggrrBrj3AFXd4rQjcdIR4W+snTYAraqygFVOxj6kwWsGEpjYEmlHYIfHAz32QBwxwngmj/BFzhOjz0FjCtkwXKTvDgvMGygmLiMv6HotmG+SAc4E3oWl+PJa0a1iB1kA1MpMzjnbtq9liSBNSATq+orfEToY0l9qg4tGQp3zlTWua06vksVGpcQbIeUUvoUnvQEBEScyn6HwIwp4DT0ShygvogPK98XL0WnLCtTx45n1DXKR9JfJuLre2D6Qy1w2QZdShKkL7emy2KH7G2crbLW6u3MAzdpGvG71On4pW8MqzOD67bY6N8D0d4+kx55K3Woy9xQ5OnuM9hjVhrhn0XoqbD/eQ+a+KBNL2ZoUrjbDscQWNvW17E0Mc/qKZCCV7h1V8de633h+0xp2s8Dw9VevYgn3lrQbW32Jb94ckpns01qOxLjR2sF1SHfkVIPWWrv8oEbbQf5lddQ5LJR5mbgKqE3o5o6gKaoaeIvhGtWRf5qZ4mLjWfXIHHovKQY4EvnfbR+Qg8Hx4V7oxrMfZHKi7a0sLPnUHrKHTYVPmGxcyYyWVFjfE6z94C9FgwC6pdZIvhyQB/9/OzgETPni5qaPnX0evh8bDrbZZVm0L5SCqoiZJSEHmilOf44rTsNd+06UbM7qxSQ+u5DG0fVSg7qxbt48FgNBfc3xn/etbIk+Qca5eg6/uHL4y8TMd2wFNvUI4rf2jtvVEp4dn7NmmmbWHQJaLl2VXFnfLhi7n1DS/djUWhTOspVzYdo2xq6HjQg3Th9mIB+lBn8fXfXYZ3AZEVB1xStbJu4ly2OXAX8EYQK572veId4mUPiy9+xc15IOeHs4c+eHhzFs6O5wRR4cz4lxgnMLMqQADnfQVrzWqgXimNW9wVE/4+rLoRvsTHDYQFkswpEQ00R8BS/adNNd2X3NvksO0udC62yOyCrNHZIWnGL8z37mFZUyttogvy9T2w1mcFYE+tmwmti4dtpKwmWioDqPCHAl1TJqx0LmllTTACTcf2GgWDv/gtLcIb7IIB93tPe0f+cmu6PQQd3tsmu/2BkgvWeemfGZbGhxEwEssP/VBF2a6womyP8OyB4yBWhA5eh6JwkTztAn9etKLX1NlcIyv8d8iS+odPHxyPctlYuJuiGBm89DSp5Y+ZWO4Ddu3M1lCwF3kJdE1Rt3usaC7wbZgQLZ/r2EkY+XwVY+/x6k7mFgogl2Xi9RE0pcrKC8oKs/HiDidHK2k2MPjD3t4/EHgcWjCo3NvPLAmLRVAAcic9+izUtmc8l8v5O11scHtwxDhDYxdl9HJ/4UXJHZEQHTru+v2uo8jGt08Yr6BcboLbyNP2c96hG/KOIE2yS5BP/2JGWcPjyNhHN4bsx7KEctXWRzXEU3dcdLTNFeNebOJ55fC15ImQsA//yN5qTuCGOdsIlVedrh29ww3Blc89ZP0ktGO87rcuvPqVPpIIF6l2JP5q+nlNVAJq+RZx0Pnul/0XLwpf3pRGPzErGlQOBKubOuIrvGZiL77lk00Pcw6qcGapomfRsss4dalyOSbSmhjr8eNHRFr/NXe2wKLyHmPqXVHRQj1R+gzTV8l7XhncRkdmquONIp1e0vQkl8nJA6dE3+x8/CmXJiUo8T/qbdIi8SRcCLpii71WBgloe/TtFeYh28sMtn86MN204ZkijpIaDq8i9Gkao/vfj027IJVejJaTdOyyqvUe/fu7EUee5NY0ur3eFS7ZaPgnDWe4DU1fP3aSa+HznS/kFG/KYtNAjnqn3qrs0gcCYuRruiynsIiDiG/PZ++WFuOKOddjAKV/FgDrgtK+KIJngQIEf4lBvpI+FM8KLRf3eikZeGtz86C/6vGq+ZnqZ9k523vbr+04b8px+U9VQyD/E/McikWR8JztC/2xIQtI88Le1GOKp6ndDFOwoClm2We1YFoNm7f716P+brhhm9vbWOKCNepQssnv9Mh30EFvfXX04QLsoX76eZQtxmnXXm7kUzn9xW5t8uJv+i5eFO29DW+SPITs2WKxZGwJe2LX38S77OMqpmClxd5tkEnZQlPZzLZKe/H2nrdkEGD42XL4OBpQuwd+w4JYx6mpwNbJrrUmX4GhP3+zdZVIKyqsWmW2I2kQ+e1n/14fyQ/TYRRUSV9770x4+z5XoF/8NUvs81nMBAYD3kyGLJsqlXMpX7412LzquU1m0HlbTDNx8dsuq7MSRzmx8f+9ddxBprK/Dru+i6346v/nbtPvnqzhzM7d3Cw9Xv/TdbvMT4OYbPI7OcIwYQrnZZ11d79tmGaNi3MLppW62a9jbB/O8t5cQaqxgWv1D51/9B9MZ3ffHBYK9mhdbuM8Ofvf/XnX/0fUEsDBBQAAAAIALy6Ql2cC06OHAIAAIsDAAAKAAAAUkVBRE1FLnR4dF1Ty47aQBC8I/EP/QMYgaJI2SiRVnlpD3kom3s0Mg2x5LWRcSJyWyCPA6td7S3X/AEJS3DAmF/o+aNUz8CG5DAjz0xXd1V1+/TZK3oUR5zk1AruBu167XmUcJiZrl60W0GLmvSC06dp1mPSc9C+c69eq9fkmyyllIVs3CpkcVSvNcie24kdSWE/4WolM/sF31ckcx9pz/2VFISttNeyoeN+mr/jdBANSG5krdEVPgrEV/ar7vJbo+fIPQWdKMm5l5mcOzTg7ANn97VwbsAwP6IwTbpRr2lukzYTc8Zve5wwMFGaBGG3FzgF1+C0RPYtOI1ctZEd2wunw6chcF3I2kmppCSVQMDMvHJ7BUVjoK4cBSgdIVkFDReyhA+X/pHseHeJLJTzMH/N/diE/GRowpzsiHjY5xCCXobh+yzjJOTBg5bPCQ/lF+yotHLxv+fORRxAg0ycsel8PO730dDOG5TBK4HjTzV1z1QRN0CUyhTEVMYYayqlL7hFjwqnFGoqgGGPQ2x2bUOWz65D2pk5FMkPWFQpUzpJBrmJY87IUV6DOoDkKqkSWKcWE9KWWkCdcbVuEy6xz/62XdnMEL2SwtFTxigPLohRhitvwwoaL3FVNE8eq2wAJ66dU31FBteDUssfQmH+wWgWWKp4hvPGIc8wZllk4oabvgm82GIG/RjsRmDfZT9T312CvTZtzuFUnf77u7Wo8dD/dwD/AVBLAQIUAxQAAAAIALy6Ql0ErjpDxCIAAD/gAAAKAAAAAAAAAAAAAACAAQAAAABwYXRjaC5qc29uUEsBAhQDFAAAAAgAvLpCXZwLTo4cAgAAiwMAAAoAAAAAAAAAAAAAAIAB7CIAAFJFQURNRS50eHRQSwUGAAAAAAIAAgBwAAAAMCUAAAAA
-EOF
-          base64 -d asset.b64 > "$ASSET"
+          set -euo pipefail
+          base64 -d release-staging/1.6.2/asset.b64 > "$ASSET"
           echo "$EXPECTED_SHA  $ASSET" | sha256sum -c -
-          unzip -t "$ASSET"
+          unzip -t "$ASSET" >/dev/null
           python - <<'PY'
           import json, zipfile
           with zipfile.ZipFile("SGP_ClientPatch_1.6.2.zip") as z:
+              names=set(z.namelist())
+              assert "patch.json" in names
               p=json.loads(z.read("patch.json"))
           assert p["schemaVersion"] == 1
           assert p["patchId"] == "sgp-client-1.6.2"
           assert p["toVersion"] == "1.6.2"
           assert p["fromVersions"] == ["1.6.1"]
           assert len(p["actions"]) == 23
-          print("manifest static check PASS")
+          assert all(a["type"] == "textReplaceExact" for a in p["actions"])
+          assert all(a["target"] == "config/apotheosis/name_generation.cfg" for a in p["actions"])
+          assert all(a["expectedOccurrences"] == 1 for a in p["actions"])
+          assert all(a.get("alreadyAppliedText") for a in p["actions"])
+          print("Static manifest validation: PASS")
           PY
 
       - name: Create Draft and verify exact asset
         shell: bash
         run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "Release/tag $TAG already exists; refusing to overwrite." >&2
+            exit 1
+          fi
           cat > notes.md <<'EOF'
           ## SGP Client 1.6.2
 
@@ -52,17 +66,30 @@ EOF
           - Технические ключи, registry/material IDs и пустые material-группы не меняются.
           - Поддерживаемый переход: **1.6.1 → 1.6.2**.
           - Owner runtime test: PASS.
+          - Final publication explicitly approved by owner.
 
           SHA-256: `1a864e6187875304319418b09f1b48082b782b77130530686060f7eb442c8896`
           EOF
-          gh release create v1.6.2 "$ASSET" --repo "${{ github.repository }}" --title "SGP Client 1.6.2" --notes-file notes.md --draft
-          gh release download v1.6.2 --repo "${{ github.repository }}" --pattern "$ASSET" --dir verify
+          gh release create "$TAG" "$ASSET" --repo "$REPO" --title "SGP Client 1.6.2" --notes-file notes.md --draft
+          test "$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.draft')" = "true"
+          mkdir verify
+          gh release download "$TAG" --repo "$REPO" --pattern "$ASSET" --dir verify
           echo "$EXPECTED_SHA  verify/$ASSET" | sha256sum -c -
+          unzip -t "verify/$ASSET" >/dev/null
+          echo "Draft exact-asset verification: PASS"
 
       - name: Publish stable and live-public smoke
         shell: bash
         run: |
-          gh release edit v1.6.2 --repo "${{ github.repository }}" --draft=false --prerelease=false
-          curl -fL "https://github.com/${{ github.repository }}/releases/download/v1.6.2/$ASSET" -o live.zip
-          echo "$EXPECTED_SHA  live.zip" | sha256sum -c -
-          unzip -t live.zip
+          set -euo pipefail
+          gh release edit "$TAG" --repo "$REPO" --draft=false --prerelease=false
+          sleep 2
+          test "$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.draft')" = "false"
+          curl -fL --retry 3 "https://github.com/$REPO/releases/download/$TAG/$ASSET" -o live.zip
+          if [ "$(sha256sum live.zip | awk '{print $1}')" != "$EXPECTED_SHA" ]; then
+            gh release edit "$TAG" --repo "$REPO" --draft=true || true
+            echo "Live public SHA mismatch; returned release to Draft." >&2
+            exit 1
+          fi
+          unzip -t live.zip >/dev/null
+          echo "Live-public smoke: PASS"
