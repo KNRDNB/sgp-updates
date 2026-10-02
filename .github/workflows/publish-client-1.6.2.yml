@@ -32,8 +32,6 @@ jobs:
           python - <<'PY'
           import json, zipfile
           with zipfile.ZipFile("SGP_ClientPatch_1.6.2.zip") as z:
-              names=set(z.namelist())
-              assert "patch.json" in names
               p=json.loads(z.read("patch.json"))
           assert p["schemaVersion"] == 1
           assert p["patchId"] == "sgp-client-1.6.2"
@@ -47,47 +45,31 @@ jobs:
           print("Static manifest validation: PASS")
           PY
 
-      - name: Create Draft and verify exact asset
+      - name: Verify exact Draft asset
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-            echo "Release/tag $TAG already exists; refusing to overwrite." >&2
-            exit 1
-          fi
-          cat > notes.md <<'EOF'
-          ## SGP Client 1.6.2
-
-          Русификация генерации имён Apotheosis для Minecraft 1.21.1 / NeoForge 21.1.249.
-
-          - Точечные изменения `config/apotheosis/name_generation.cfg`.
-          - Полный config не заменяется.
-          - Используется строгий `textReplaceExact` с `expectedOccurrences=1` и `alreadyAppliedText`.
-          - Технические ключи, registry/material IDs и пустые material-группы не меняются.
-          - Поддерживаемый переход: **1.6.1 → 1.6.2**.
-          - Owner runtime test: PASS.
-          - Final publication explicitly approved by owner.
-
-          SHA-256: `1a864e6187875304319418b09f1b48082b782b77130530686060f7eb442c8896`
-          EOF
-          gh release create "$TAG" "$ASSET" --repo "$REPO" --title "SGP Client 1.6.2" --notes-file notes.md --draft
-          test "$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.draft')" = "true"
-          mkdir verify
-          gh release download "$TAG" --repo "$REPO" --pattern "$ASSET" --dir verify
-          echo "$EXPECTED_SHA  verify/$ASSET" | sha256sum -c -
-          unzip -t "verify/$ASSET" >/dev/null
+          RID="$(gh api "repos/$REPO/releases?per_page=100" --jq '.[] | select(.tag_name=="v1.6.2") | .id' | head -n1)"
+          test -n "$RID"
+          test "$(gh api "repos/$REPO/releases/$RID" --jq '.draft')" = "true"
+          AID="$(gh api "repos/$REPO/releases/$RID/assets" --jq '.[] | select(.name=="SGP_ClientPatch_1.6.2.zip") | .id' | head -n1)"
+          test -n "$AID"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED_SHA  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
           echo "Draft exact-asset verification: PASS"
+          echo "RID=$RID" >> "$GITHUB_ENV"
 
       - name: Publish stable and live-public smoke
         shell: bash
         run: |
           set -euo pipefail
-          gh release edit "$TAG" --repo "$REPO" --draft=false --prerelease=false
+          gh api --method PATCH "repos/$REPO/releases/$RID" -f draft=false -f prerelease=false >/dev/null
           sleep 2
-          test "$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.draft')" = "false"
+          test "$(gh api "repos/$REPO/releases/$RID" --jq '.draft')" = "false"
           curl -fL --retry 3 "https://github.com/$REPO/releases/download/$TAG/$ASSET" -o live.zip
           if [ "$(sha256sum live.zip | awk '{print $1}')" != "$EXPECTED_SHA" ]; then
-            gh release edit "$TAG" --repo "$REPO" --draft=true || true
+            gh api --method PATCH "repos/$REPO/releases/$RID" -f draft=true >/dev/null || true
             echo "Live public SHA mismatch; returned release to Draft." >&2
             exit 1
           fi
