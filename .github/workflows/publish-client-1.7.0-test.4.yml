@@ -1,0 +1,141 @@
+name: Publish SGP Client 1.7.0-test.4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.7.0-test.4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: v1.7.0-test.4
+      ASSET: SGP_ClientPatch_1.7.0-test.4.zip
+      BASE_TAG: v1.7.0-test.3
+      BASE_ASSET: SGP_ClientPatch_1.7.0-test.3.zip
+      BASE_SHA: c6d98a99d0c36c228ebd69b6a097936d2ddbe35399b1167854900165cdb5123f
+      BRAND_SHA: 506742cad60c67a00d512c06397dbe7e5a3a9d8e478cc1950a8068f94e674893
+      LOGO_SHA: 993d39e756438788a85536a8324a5b20fe71281ae25f4d4192854e5cc111f53e
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Download exact published test.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing same-version byte replacement." >&2
+            exit 1
+          fi
+          gh release download "$BASE_TAG" --repo "$REPO" -p "$BASE_ASSET"
+          echo "$BASE_SHA  $BASE_ASSET" | sha256sum -c -
+          unzip -t "$BASE_ASSET" >/dev/null
+
+      - name: Build and statically audit cumulative test.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.7.0-test.4/build_test4.py
+          sha256sum "$ASSET" | tee candidate.sha256
+
+      - name: Upload exact audited candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ClientPatch_1.7.0-test.4_AUDITED
+          path: SGP_ClientPatch_1.7.0-test.4.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Publish verified prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          cat > release-notes.md <<'EOF'
+          ## SGP Client 1.7.0-test.4
+
+          Cumulative TEST planned stable линии 1.7.0.
+
+          - Прямое обновление со всех accepted stable 1.0.0–1.6.2.
+          - Forward repair с 1.7.0-test.1 / test.2 / test.3.
+          - SGP Client Branding 1.2.3: исправлен точечный/шахматный halo вокруг прозрачного SGP logo из test.3. Используется чистый transparent source 144×48, корректная геометрия 3:1 и линейная фильтрация.
+          - Плашка SGP остаётся постоянной: без обновления показывает текущую версию и не показывает кнопку; при новой stable-версии — мигающее красное уведомление, новая версия и «Обновить».
+          - Branding повторно читает authoritative .sgp/pack.json при открытии TitleScreen, чтобы не использовать устаревшее значение версии.
+          - Building Wands, полный русский перевод, paxel compat, лимиты и SGP Fixes rev 1.10 относительно test.3 не менялись.
+
+          Owner Minecraft runtime test обязателен перед stable 1.7.0.
+          EOF
+          gh release create "$TAG" "$ASSET" \
+            --repo "$REPO" \
+            --target "${{ github.sha }}" \
+            --title "SGP Client 1.7.0-test.4" \
+            --notes-file release-notes.md \
+            --prerelease
+          echo "$SHA" > expected.sha
+
+      - name: Redownload and verify exact live asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "true"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].state')" = "uploaded"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+          python3 - <<'PY'
+          import hashlib, io, json, zipfile
+          stable=["1.0.0","1.0.1","1.0.2","1.0.3","1.1.0","1.2.0","1.2.1","1.3.0","1.3.1","1.3.2","1.3.3","1.4.0","1.5.0","1.5.1","1.5.2","1.5.3","1.6.0","1.6.1","1.6.2"]
+          brand_sha="506742cad60c67a00d512c06397dbe7e5a3a9d8e478cc1950a8068f94e674893"
+          logo_sha="993d39e756438788a85536a8324a5b20fe71281ae25f4d4192854e5cc111f53e"
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.7.0-test.4"
+              assert p["toVersion"]=="1.7.0-test.4"
+              assert p["fromVersions"]==stable+["1.7.0-test.1","1.7.0-test.2","1.7.0-test.3"]
+              assert "files/mods/SGP-Client-Branding-1.2.2.jar" not in z.namelist()
+              brand=z.read("files/mods/SGP-Client-Branding-1.2.3.jar")
+              assert hashlib.sha256(brand).hexdigest()==brand_sha
+              with zipfile.ZipFile(io.BytesIO(brand)) as bz:
+                  logo=bz.read("assets/sgp_client_branding/textures/gui/sgp_logo.png")
+                  assert hashlib.sha256(logo).hexdigest()==logo_sha
+                  assert int.from_bytes(logo[16:20],"big")==144
+                  assert int.from_bytes(logo[20:24],"big")==48
+                  toml=bz.read("META-INF/neoforge.mods.toml").decode()
+                  assert 'version="1.2.3"' in toml
+          print("LIVE TEST.4 SHA/ZIP/MANIFEST/BRANDING: PASS")
+          PY
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
+
+      - name: Remove superseded failed test.3 from test channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release delete "$BASE_TAG" --repo "$REPO" --cleanup-tag -y
+          if gh api "repos/$REPO/releases/tags/$BASE_TAG" >/dev/null 2>&1; then
+            echo "Superseded test.3 release still exists." >&2
+            exit 1
+          fi
+          echo "SUPERSEDED_TEST3_REMOVED"
