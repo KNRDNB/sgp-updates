@@ -21,7 +21,13 @@ def sha_bytes(b:bytes)->str:
 def sha_file(p:Path)->str:
     return sha_bytes(p.read_bytes())
 def run(*a:str):
-    return subprocess.run(a,check=True,text=True,capture_output=True)
+    cp=subprocess.run(a,check=False,text=True,capture_output=True)
+    if cp.returncode!=0:
+        print("COMMAND FAILED:", a)
+        print("STDOUT:\n"+cp.stdout)
+        print("STDERR:\n"+cp.stderr)
+        cp.check_returncode()
+    return cp
 
 def png_rgba_alpha(data:bytes):
     assert data[:8]==b'\x89PNG\r\n\x1a\n'
