@@ -1,0 +1,37 @@
+name: Inspect Branding 1.2.13 bytecode
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-branding-1.2.13.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download published test.15 and inspect Branding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v1.7.0-test.15 --repo "${{ github.repository }}" -p SGP_ClientPatch_1.7.0-test.15.zip
+          unzip -q SGP_ClientPatch_1.7.0-test.15.zip files/mods/SGP-Client-Branding-1.2.13.jar
+          javap -classpath files/mods/SGP-Client-Branding-1.2.13.jar -p -c -v sgp.client.branding.SgpClientBranding > branding.javap.txt
+          echo '=== onScreenInitPost ==='
+          awk '/onScreenInitPost\(/,/onScreenRenderPost\(/' branding.javap.txt
+          echo '=== startUpdateCheck ==='
+          awk '/startUpdateCheck\(/,/openInstaller\(/' branding.javap.txt
+          echo '=== compareSemVer ==='
+          awk '/compareSemVer\(/,/parseSemVer\(/' branding.javap.txt
+          echo '=== parseSemVer ==='
+          awk '/parseSemVer\(/,/lambda\$startUpdateCheck/' branding.javap.txt
