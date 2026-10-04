@@ -75,7 +75,7 @@ new=b"maxRopeLength = 512"
 assert cbase.count(old)==1
 ctarget=cbase.replace(old,new,1)
 assert len(ctarget)==len(cbase)
-cp=BUILD/"config/create-server.toml"
+cp=BUILD/"world/serverconfig/create-server.toml"
 cp.write_bytes(ctarget)
 assert cp.read_bytes().count(new)==1 and cp.read_bytes().count(old)==0
 
@@ -114,7 +114,7 @@ sgp=BUILD/".sgp";sgp.mkdir()
 expected=sorted([
  ".sgp/history.json",
  ".sgp/pack.json",
- "config/create-server.toml",
+ "world/serverconfig/create-server.toml",
  "config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip",
  "config/wands.json",
  "mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar",
@@ -138,7 +138,7 @@ with zipfile.ZipFile(OUT) as z:
     assert json.loads(z.read(".sgp/pack.json"))["version"]=="1.1.0"
     assert json.loads(z.read(".sgp/history.json"))["currentVersion"]=="1.1.0"
 
-print("SERVER_110_OVERLAY_WITH_EXACT_DELETE_AUDIT_PASS")
+print("SERVER_110_ACTIVE_SERVERCONFIG_AUDIT_PASS")
 print("DELETE_BEFORE_COPY=mods/BuildingWands-neoforge-MC1.21-2.14.jar")
 print("SERVER_ZIP_SHA="+shaf(OUT))
 print("SERVER_ZIP_SIZE="+str(OUT.stat().st_size))
