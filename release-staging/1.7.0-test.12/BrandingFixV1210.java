@@ -65,7 +65,8 @@ public class BrandingFixV1210 {
         //   background/top/bottom right = 220 -> 164
         //   right border x1/x2 = 219/220 -> 163/164
         int c220=0, c219=0;
-        for(AbstractInsnNode n=m.instructions.getFirst(); n!=null; n=n.getNext()) {
+        for(AbstractInsnNode n=m.instructions.getFirst(); n!=null; ) {
+            AbstractInsnNode next=n.getNext();
             int v=intValue(n);
             if(v==220 && c220<4) {
                 m.instructions.set(n,intInsn(164));
@@ -74,6 +75,7 @@ public class BrandingFixV1210 {
                 m.instructions.set(n,intInsn(163));
                 c219++;
             }
+            n=next;
         }
         if(c220!=4 || c219!=1)
             throw new IllegalStateException("unexpected plaque constants 220="+c220+" 219="+c219);
