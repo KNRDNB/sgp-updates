@@ -1,0 +1,96 @@
+name: Build SGP Server 1.1.0 overlay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-server-1.1.0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      CLIENT_TAG: v1.7.0
+      CLIENT_ASSET: SGP_ClientPatch_1.7.0.zip
+      CLIENT_SHA: 95e649ccb3ad53ac5e21584e31a010907d245a4c6d1572eaf281fc8ef8234377
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download exact accepted client source
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download "$CLIENT_TAG" --repo "$REPO" -p "$CLIENT_ASSET"
+          echo "$CLIENT_SHA  $CLIENT_ASSET" | sha256sum -c -
+          unzip -t "$CLIENT_ASSET" >/dev/null
+
+      - name: Build pure replacement overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/server-1.1.0/build_server_110.py
+          sha256sum SGP_ServerPatch_1.1.0.zip | tee server.sha256
+
+      - name: Exact Wands Mixin preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          WANDS=".work-server-110/server-root/mods/BuildingWands-neoforge-MC1.21-2.14.jar"
+          COMPAT=".work-server-110/server-root/mods/SGP-Wands-Paxel-Compat-1.0.0.jar"
+          javap -classpath "$COMPAT" -p -v sgp.wands.paxelcompat.mixin.WandPaxelMixin > mixin.txt
+          grep -Fq "major version: 65" mixin.txt
+          grep -Fq "org.spongepowered.asm.mixin.Mixin(" mixin.txt
+          grep -Fq 'targets=["net.nicguzzo.wands.wand.Wand"]' mixin.txt
+          grep -Fq "org.spongepowered.asm.mixin.injection.Inject(" mixin.txt
+          grep -Fq "can_dig(Lnet/minecraft/world/level/block/state/BlockState;ZLnet/minecraft/world/item/ItemStack;)Z" mixin.txt
+          grep -Fq "require=1" mixin.txt
+          grep -Fq "cancellable=true" mixin.txt
+          javap -classpath "$WANDS" -p -s net.nicguzzo.wands.wand.Wand > wands.txt
+          grep -Fq "descriptor: (Lnet/minecraft/world/level/block/state/BlockState;ZLnet/minecraft/world/item/ItemStack;)Z" wands.txt
+          echo "SERVER_WANDS_MIXIN_PREFLIGHT_PASS"
+
+      - name: Overlay content audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,zipfile
+          from pathlib import Path
+          zpath=Path("SGP_ServerPatch_1.1.0.zip")
+          expected=sorted([
+            ".sgp/history.json",
+            ".sgp/pack.json",
+            "config/create-server.toml",
+            "config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip",
+            "config/wands.json",
+            "mods/BuildingWands-neoforge-MC1.21-2.14.jar",
+            "mods/SGP-Wands-Paxel-Compat-1.0.0.jar",
+          ])
+          with zipfile.ZipFile(zpath) as z:
+              assert z.testzip() is None
+              assert sorted(z.namelist())==expected
+              assert json.loads(z.read(".sgp/pack.json"))["version"]=="1.1.0"
+              assert json.loads(z.read(".sgp/history.json"))["currentVersion"]=="1.1.0"
+              assert b"maxRopeLength = 512" in z.read("config/create-server.toml")
+              w=json.loads(z.read("config/wands.json"))
+              assert [w["stone_wand_limit"],w["copper_wand_limit"],w["iron_wand_limit"],w["diamond_wand_limit"],w["netherite_wand_limit"],w["creative_wand_limit"]]==[128,256,512,1024,4096,8192]
+          print("SERVER_110_ROOT_REPLACE_OVERLAY_PASS")
+          PY
+
+      - name: Upload exact server overlay
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ServerPatch_1.1.0
+          path: SGP_ServerPatch_1.1.0.zip
+          retention-days: 14
+          if-no-files-found: error
