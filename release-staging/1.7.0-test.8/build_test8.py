@@ -83,7 +83,7 @@ def make_decontaminated_png(data:bytes)->bytes:
     def chunk(kind:bytes,payload:bytes)->bytes:
         return struct.pack('>I',len(payload))+kind+payload+struct.pack('>I',binascii.crc32(kind+payload)&0xffffffff)
     ihdr=struct.pack('>IIBBBBB',width,height,8,6,0,0,0)
-    return b'\\x89PNG\\r\\n\\x1a\\n'+chunk(b'IHDR',ihdr)+chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b'')
+    return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',ihdr)+chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b'')
 
 assert BASE.is_file() and sha_file(BASE)==BASE_SHA
 if WORK.exists():
