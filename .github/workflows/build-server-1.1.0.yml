@@ -1,4 +1,4 @@
-name: Build SGP Server 1.1.0 overlay
+name: Build SGP Server 1.1.0
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WANDS=".work-server-110/server-root/mods/BuildingWands-neoforge-MC1.21-2.14.jar"
+          WANDS=".work-server-110/server-root/mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar"
           COMPAT=".work-server-110/server-root/mods/SGP-Wands-Paxel-Compat-1.0.0.jar"
           javap -classpath "$COMPAT" -p -v sgp.wands.paxelcompat.mixin.WandPaxelMixin > mixin.txt
           grep -Fq "major version: 65" mixin.txt
@@ -73,7 +73,7 @@ jobs:
             "config/create-server.toml",
             "config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip",
             "config/wands.json",
-            "mods/BuildingWands-neoforge-MC1.21-2.14.jar",
+            "mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar",
             "mods/SGP-Wands-Paxel-Compat-1.0.0.jar",
           ])
           with zipfile.ZipFile(zpath) as z:
@@ -84,7 +84,7 @@ jobs:
               assert b"maxRopeLength = 512" in z.read("config/create-server.toml")
               w=json.loads(z.read("config/wands.json"))
               assert [w["stone_wand_limit"],w["copper_wand_limit"],w["iron_wand_limit"],w["diamond_wand_limit"],w["netherite_wand_limit"],w["creative_wand_limit"]]==[128,256,512,1024,4096,8192]
-          print("SERVER_110_ROOT_REPLACE_OVERLAY_PASS")
+          print("SERVER_110_OVERLAY_WITH_EXACT_DELETE_PASS")
           PY
 
       - name: Upload exact server overlay
@@ -94,3 +94,5 @@ jobs:
           path: SGP_ServerPatch_1.1.0.zip
           retention-days: 14
           if-no-files-found: error
+
+# rebuild after correcting versioned-JAR deletion policy
