@@ -71,32 +71,53 @@ def encode_rgba_png(width:int,height:int,pixels):
 def extract_complete_test5_cube(full:bytes):
     w,h,pixels=parse_rgba_png(full)
     assert (w,h)==(144,48)
-    alpha={(x,y):a for x,y,r,g,b,a in pixels}
-    col_has=[any(alpha[(x,y)]>0 for y in range(h)) for x in range(w)]
-    # Find the first real transparent separator after the cube. Require >=2 empty
-    # columns and visible wordmark pixels after it. Keep 2 transparent separator
-    # columns in the cube texture so linear filtering cannot clip the right edge.
-    gap_start=None; gap_len=0
-    x=32
-    while x<80:
-        if not col_has[x]:
-            j=x
-            while j<80 and not col_has[j]: j+=1
-            if j-x>=2 and any(col_has[j:]):
-                gap_start=x; gap_len=j-x; break
-            x=j
-        else:
-            x+=1
-    assert gap_start is not None, 'could not detect transparent cube/wordmark separator'
-    crop_w=gap_start+min(2,gap_len)
-    assert 49<=crop_w<=64, (gap_start,gap_len,crop_w)
+    px={(x,y):(r,g,b,a) for x,y,r,g,b,a in pixels}
+
+    # The clean test.5 logo has antialiased pixels between visual regions, so a
+    # strictly empty-column separator is not guaranteed. Detect the cube as the
+    # connected visible component that contains the yellow faces, using an alpha
+    # floor only for component topology; then crop original unmodified RGBA bytes
+    # through that component plus a small right-side safety/padding margin.
+    threshold=48
+    visible={(x,y) for x,y,r,g,b,a in pixels if a>=threshold}
+    yellow={(x,y) for x,y,r,g,b,a in pixels
+            if a>=threshold and r>=150 and g>=100 and b<=120 and r>=b+45 and g>=b+25}
+    assert yellow, 'yellow cube pixels not found'
+
+    from collections import deque
+    seed=min(yellow, key=lambda p:(p[0],p[1]))
+    q=deque([seed]); comp={seed}
+    while q:
+        x,y=q.popleft()
+        for nx in (x-1,x,x+1):
+            for ny in (y-1,y,y+1):
+                if nx==x and ny==y: continue
+                p=(nx,ny)
+                if p in visible and p not in comp:
+                    comp.add(p); q.append(p)
+
+    # Require that the selected component really is the left-side cube and not
+    # the SGP wordmark.
+    xs=[x for x,y in comp]; ys=[y for x,y in comp]
+    assert min(xs)<=2 and max(xs)<80, (min(xs),max(xs))
+    assert len(comp)>100, len(comp)
+    yellow_in_comp=sum((p in comp) for p in yellow)
+    assert yellow_in_comp>=max(20,len(yellow)//2), (yellow_in_comp,len(yellow))
+
+    max_x=max(xs)
+    # Include two original columns beyond the alpha>=48 component so low-alpha
+    # antialias pixels/outline are not chopped at the new texture boundary.
+    crop_w=min(max_x+3,72)
+    assert 49<=crop_w<=64, (max_x,crop_w)
+
+    # Guard against swallowing the white SGP wordmark: the retained safety columns
+    # may contain only a small number of non-yellow edge pixels.
+    for x in range(max_x+1,crop_w):
+        strong=sum(1 for y in range(h) if px[(x,y)][3]>=threshold)
+        assert strong<=4, (x,strong)
+
     crop=[(x,y,r,g,b,a) for x,y,r,g,b,a in pixels if x<crop_w]
-    occupied=[(x,y) for x,y,r,g,b,a in crop if a>0]
-    assert occupied
-    # Critical regression proof: the old 48px crop was incomplete.
-    assert max(x for x,y in occupied)>=48, max(x for x,y in occupied)
-    assert all(not col_has[x] for x in range(gap_start,crop_w))
-    return encode_rgba_png(crop_w,48,crop), crop_w, gap_start, gap_len
+    return encode_rgba_png(crop_w,48,crop), crop_w, max_x+1, crop_w-(max_x+1)
 
 assert BASE.is_file() and sha_file(BASE)==BASE_SHA
 if WORK.exists(): shutil.rmtree(WORK)
