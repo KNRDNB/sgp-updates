@@ -99,7 +99,10 @@ def extract_complete_test5_cube(full:bytes):
     # Require that the selected component really is the left-side cube and not
     # the SGP wordmark.
     xs=[x for x,y in comp]; ys=[y for x,y in comp]
-    assert min(xs)<=2 and max(xs)<80, (min(xs),max(xs))
+    # In the original 144x48 test.5 logo the cube intentionally has transparent
+    # left padding; observed strong component begins around x=14. Preserve that
+    # original padding because it is part of the test.5 visual geometry.
+    assert 8<=min(xs)<=20 and 48<=max(xs)<80, (min(xs),max(xs))
     assert len(comp)>100, len(comp)
     yellow_in_comp=sum((p in comp) for p in yellow)
     assert yellow_in_comp>=max(20,len(yellow)//2), (yellow_in_comp,len(yellow))
