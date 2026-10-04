@@ -102,3 +102,5 @@ jobs:
 # rerun after fixing active serverconfig directory creation
 
 # rerun after fixing builder syntax
+
+# rerun after fixing literal newline in builder
