@@ -173,3 +173,5 @@ jobs:
             exit 1
           fi
           echo "FAILED_TEST12_REMOVED"
+
+# rerun after full-cube connected-component fix
