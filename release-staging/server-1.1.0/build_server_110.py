@@ -27,7 +27,7 @@ with zipfile.ZipFile(CLIENT) as z:
     assert pm["toVersion"]=="1.7.0"
 
     payloads={
-      "mods/BuildingWands-neoforge-MC1.21-2.14.jar":
+      "mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar":
         "files/mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar",
       "mods/SGP-Wands-Paxel-Compat-1.0.0.jar":
         "files/mods/SGP-Wands-Paxel-Compat-1.0.0.jar",
@@ -39,17 +39,11 @@ with zipfile.ZipFile(CLIENT) as z:
         p.parent.mkdir(parents=True,exist_ok=True)
         p.write_bytes(z.read(src))
 
-assert shaf(BUILD/"mods/BuildingWands-neoforge-MC1.21-2.14.jar")==WANDS_SHA
+assert shaf(BUILD/"mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar")==WANDS_SHA
 assert shaf(BUILD/"mods/SGP-Wands-Paxel-Compat-1.0.0.jar")==COMPAT_SHA
 assert shaf(BUILD/"config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip")==FIXES_SHA
 
-# Pure root-overlay policy: replace existing server files directly.
-# Building Wands 3.0.5 bytes intentionally use the existing 2.14 filename,
-# so drag/drop "replace files" removes the old mod bytes without a delete step.
-with zipfile.ZipFile(BUILD/"mods/BuildingWands-neoforge-MC1.21-2.14.jar") as z:
-    assert z.testzip() is None
-
-# Full replacement target for Wands config, derived from exact staged current server config.
+# Wands config is a full replacement built from the exact staged current config.
 wbase=json.loads((STAGE/"wands-base.json").read_text("utf-8"))
 wtarget=dict(wbase)
 wtarget.update({
@@ -73,7 +67,8 @@ wp=BUILD/"config/wands.json"
 wp.parent.mkdir(parents=True,exist_ok=True)
 wp.write_text(json.dumps(wtarget,ensure_ascii=False,indent=2)+"\n","utf-8")
 
-# Full replacement target for Create server config, preserving all owner/current bytes except Rope Pulley 384 -> 512.
+# Create server config is a full replacement from the exact current server config.
+# Only Rope Pulley length changes.
 cbase=(STAGE/"create-server-base.toml").read_bytes()
 old=b"maxRopeLength = 384"
 new=b"maxRopeLength = 512"
@@ -84,7 +79,7 @@ cp=BUILD/"config/create-server.toml"
 cp.write_bytes(ctarget)
 assert cp.read_bytes().count(new)==1 and cp.read_bytes().count(old)==0
 
-# Final target .sgp metadata is part of the same overlay.
+# Final target .sgp metadata is in the same archive.
 pack={
  "schemaVersion":1,
  "packId":"sgp-neoforge-1.21.1-server",
@@ -122,13 +117,13 @@ expected=sorted([
  "config/create-server.toml",
  "config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip",
  "config/wands.json",
- "mods/BuildingWands-neoforge-MC1.21-2.14.jar",
+ "mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar",
  "mods/SGP-Wands-Paxel-Compat-1.0.0.jar",
 ])
 files=sorted(p for p in BUILD.rglob("*") if p.is_file())
 assert [p.relative_to(BUILD).as_posix() for p in files]==expected
 
-fixed=(2026,10,4,18,30,0)
+fixed=(2026,10,4,18,45,0)
 with zipfile.ZipFile(OUT,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=9) as z:
     for f in files:
         arc=f.relative_to(BUILD).as_posix()
@@ -143,9 +138,10 @@ with zipfile.ZipFile(OUT) as z:
     assert json.loads(z.read(".sgp/pack.json"))["version"]=="1.1.0"
     assert json.loads(z.read(".sgp/history.json"))["currentVersion"]=="1.1.0"
 
-print("SERVER_110_PURE_OVERLAY_AUDIT_PASS")
+print("SERVER_110_OVERLAY_WITH_EXACT_DELETE_AUDIT_PASS")
+print("DELETE_BEFORE_COPY=mods/BuildingWands-neoforge-MC1.21-2.14.jar")
 print("SERVER_ZIP_SHA="+shaf(OUT))
 print("SERVER_ZIP_SIZE="+str(OUT.stat().st_size))
 print("CREATE_SERVER_SHA="+shaf(cp))
 print("WANDS_CONFIG_SHA="+shaf(wp))
-print("WANDS_JAR_SHA="+shaf(BUILD/"mods/BuildingWands-neoforge-MC1.21-2.14.jar"))
+print("WANDS_JAR_SHA="+shaf(BUILD/"mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar"))
