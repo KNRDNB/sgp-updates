@@ -76,7 +76,7 @@ assert cbase.count(old)==1
 ctarget=cbase.replace(old,new,1)
 assert len(ctarget)==len(cbase)
 cp=BUILD/"world/serverconfig/create-server.toml"
-cp.write_bytes(ctarget)
+cp.parent.mkdir(parents=True,exist_ok=True)\ncp.write_bytes(ctarget)
 assert cp.read_bytes().count(new)==1 and cp.read_bytes().count(old)==0
 
 # Final target .sgp metadata is in the same archive.
