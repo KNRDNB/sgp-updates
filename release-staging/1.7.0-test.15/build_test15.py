@@ -83,9 +83,10 @@ assert 'computePlaqueRight:(Lnet/minecraft/client/gui/Font;ZLjava/lang/String;Lj
 for token in ['bipush        8','bipush        12','bipush        29','bipush        24','bipush        58','bipush        48','bipush        41']:
     assert token in render, token
 helper=javap[javap.index('private static int computePlaqueRight'):javap.index('private static void startUpdateCheck')]
-for s in ['Доступно обновление','Новая версия: ','Версия SGP: не определена','Версия SGP: ']:
-    assert s in helper
+assert 'Font.width:(Ljava/lang/String;)I' in helper
+assert 'java/lang/Math.max:(II)I' in helper
 assert helper.count('bipush        8')>=2
+assert helper.count('bipush        41')>=2
 print('BRANDING 1.2.13 DYNAMIC-WIDTH AUDIT: PASS')
 print('BRAND_SHA='+new_sha)
 print('BRAND_SIZE='+str(new_size))
