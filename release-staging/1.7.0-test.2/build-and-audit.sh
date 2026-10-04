@@ -407,7 +407,7 @@ grep -Fq "descriptor: (Lnet/minecraft/world/level/block/state/BlockState;ZLnet/m
 python3 - <<'PY'
 from pathlib import Path
 import zipfile, re, json
-compat=Path(".work-170t2/build/files/mods/SGP-Wands-Paxel-Compat-1.0.0.jar")
+compat=Path("build/files/mods/SGP-Wands-Paxel-Compat-1.0.0.jar")
 with zipfile.ZipFile(compat) as z:
     assert z.testzip() is None
     names=z.namelist()
@@ -428,3 +428,38 @@ cp "$WORK/$FINAL" "$OUT/$FINAL"
 cp "$WORK/audit-report.json" "$OUT/audit-report.json"
 echo "$(sha256sum "$OUT/$FINAL" | awk '{print $1}')" > "$OUT/sha256.txt"
 echo "BUILD_AUDIT_PASS"
+
+
+TAG="v1.7.0-test.2"
+if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+  echo "Release $TAG already exists; refusing overwrite." >&2
+  exit 1
+fi
+cat > "$WORK/release-notes.md" <<'EOF'
+## SGP Client 1.7.0-test.2
+
+Cumulative TEST planned stable линии 1.7.0.
+
+- Прямое обновление со всех accepted stable 1.0.0–1.6.2.
+- Дополнительно поддержан forward repair с 1.7.0-test.1.
+- Building Wands 3.0.5 + SGP paxel compat.
+- Chorus Succulent compat перенесён в SGP Fixes rev 1.10; отдельный SGP_EndCompat удалён.
+- Worldgen не меняется.
+
+Owner Minecraft runtime test обязателен.
+EOF
+gh release create "$TAG" "$OUT/$FINAL" --repo "$REPO" --target "$GITHUB_SHA" --title "SGP Client 1.7.0-test.2" --notes-file "$WORK/release-notes.md" --prerelease
+REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+RID="$(printf '%s' "$REL" | jq -r '.id')"
+test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "true"
+ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$FINAL"
+gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > "$WORK/verify.zip"
+test "$(sha256sum "$WORK/verify.zip" | awk '{print $1}')" = "$(cat "$OUT/sha256.txt")"
+unzip -t "$WORK/verify.zip" >/dev/null
+echo "LIVE_PRERELEASE_VERIFY_PASS"
+gh release delete v1.7.0-test.1 --repo "$REPO" --cleanup-tag -y
+echo "SUPERSEDED_TEST1_REMOVED"
