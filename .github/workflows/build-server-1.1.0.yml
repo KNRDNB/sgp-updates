@@ -1,4 +1,4 @@
-name: Build SGP Server 1.1.0
+name: Build SGP Server 1.1.0 active serverconfig
 
 on:
   push:
@@ -70,7 +70,7 @@ jobs:
           expected=sorted([
             ".sgp/history.json",
             ".sgp/pack.json",
-            "config/create-server.toml",
+            "world/serverconfig/create-server.toml",
             "config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip",
             "config/wands.json",
             "mods/BuildingWands-neoforge-MC1.21.1-3.0.5.jar",
@@ -81,10 +81,10 @@ jobs:
               assert sorted(z.namelist())==expected
               assert json.loads(z.read(".sgp/pack.json"))["version"]=="1.1.0"
               assert json.loads(z.read(".sgp/history.json"))["currentVersion"]=="1.1.0"
-              assert b"maxRopeLength = 512" in z.read("config/create-server.toml")
+              assert b"maxRopeLength = 512" in z.read("world/serverconfig/create-server.toml")
               w=json.loads(z.read("config/wands.json"))
               assert [w["stone_wand_limit"],w["copper_wand_limit"],w["iron_wand_limit"],w["diamond_wand_limit"],w["netherite_wand_limit"],w["creative_wand_limit"]]==[128,256,512,1024,4096,8192]
-          print("SERVER_110_OVERLAY_WITH_EXACT_DELETE_PASS")
+          print("SERVER_110_ACTIVE_SERVERCONFIG_PASS")
           PY
 
       - name: Upload exact server overlay
@@ -96,3 +96,5 @@ jobs:
           if-no-files-found: error
 
 # rebuild after correcting versioned-JAR deletion policy
+
+# rebuild after correcting Create SERVER config path to world/serverconfig
