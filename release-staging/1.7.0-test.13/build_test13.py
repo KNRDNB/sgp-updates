@@ -73,11 +73,7 @@ def extract_complete_test5_cube(full:bytes):
     assert (w,h)==(144,48)
     px={(x,y):(r,g,b,a) for x,y,r,g,b,a in pixels}
 
-    # The clean test.5 logo has antialiased pixels between visual regions, so a
-    # strictly empty-column separator is not guaranteed. Detect the cube as the
-    # connected visible component that contains the yellow faces, using an alpha
-    # floor only for component topology; then crop original unmodified RGBA bytes
-    # through that component plus a small right-side safety/padding margin.
+    # Detect the actual cube component in the exact test.5 raster.
     threshold=48
     visible={(x,y) for x,y,r,g,b,a in pixels if a>=threshold}
     yellow={(x,y) for x,y,r,g,b,a in pixels
@@ -96,31 +92,31 @@ def extract_complete_test5_cube(full:bytes):
                 if p in visible and p not in comp:
                     comp.add(p); q.append(p)
 
-    # Require that the selected component really is the left-side cube and not
-    # the SGP wordmark.
-    xs=[x for x,y in comp]; ys=[y for x,y in comp]
-    # In the original 144x48 test.5 logo the cube intentionally has transparent
-    # left padding; observed strong component begins around x=14. Preserve that
-    # original padding because it is part of the test.5 visual geometry.
+    xs=[x for x,y in comp]
     assert 8<=min(xs)<=20 and 48<=max(xs)<80, (min(xs),max(xs))
     assert len(comp)>100, len(comp)
-    yellow_in_comp=sum((p in comp) for p in yellow)
-    assert yellow_in_comp>=max(20,len(yellow)//2), (yellow_in_comp,len(yellow))
 
     max_x=max(xs)
-    # Include two original columns beyond the alpha>=48 component so low-alpha
-    # antialias pixels/outline are not chopped at the new texture boundary.
-    crop_w=min(max_x+3,72)
-    assert 49<=crop_w<=64, (max_x,crop_w)
+    # Runtime audit showed the strong cube component ends at x=55 while the old
+    # SGP wordmark begins at x=57. Preserve original columns through x=56, then
+    # append one synthetic fully-transparent column so 58 source px scale exactly
+    # 2:1 to 29 destination px without sampling the wordmark or clipping the cube.
+    assert max_x==55, max_x
+    strong56=sum(1 for y in range(h) if px[(56,y)][3]>=threshold)
+    strong57=sum(1 for y in range(h) if px[(57,y)][3]>=threshold)
+    assert strong56<=4, strong56
+    assert strong57>=5, strong57
 
-    # Guard against swallowing the white SGP wordmark: the retained safety columns
-    # may contain only a small number of non-yellow edge pixels.
-    for x in range(max_x+1,crop_w):
-        strong=sum(1 for y in range(h) if px[(x,y)][3]>=threshold)
-        assert strong<=4, (x,strong)
-
-    crop=[(x,y,r,g,b,a) for x,y,r,g,b,a in pixels if x<crop_w]
-    return encode_rgba_png(crop_w,48,crop), crop_w, max_x+1, crop_w-(max_x+1)
+    crop_w=58
+    crop=[]
+    for y in range(h):
+        for x in range(crop_w):
+            if x<=56:
+                r,g,b,a=px[(x,y)]
+            else:
+                r=g=b=a=0
+            crop.append((x,y,r,g,b,a))
+    return encode_rgba_png(crop_w,48,crop), crop_w, 57, 1
 
 assert BASE.is_file() and sha_file(BASE)==BASE_SHA
 if WORK.exists(): shutil.rmtree(WORK)
