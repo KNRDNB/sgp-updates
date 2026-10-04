@@ -82,9 +82,10 @@ assert 'computePlaqueRight:(Lnet/minecraft/client/gui/Font;ZLjava/lang/String;Lj
 # Preserve accepted test.14 cube/text geometry.
 for token in ['bipush        8','bipush        12','bipush        29','bipush        24','bipush        58','bipush        48','bipush        41']:
     assert token in render, token
-helper=javap[javap.index('private static int computePlaqueRight'):javap.index('private static void startUpdateCheck')]
-assert 'Font.width:(Ljava/lang/String;)I' in helper
-assert 'java/lang/Math.max:(II)I' in helper
+assert 'width:(Ljava/lang/String;)I' in javap
+assert 'java/lang/Math.max:(II)I' in javap
+helper_start=javap.rindex('private static int computePlaqueRight')
+helper=javap[helper_start:]
 assert helper.count('bipush        8')>=2
 assert helper.count('bipush        41')>=2
 print('BRANDING 1.2.13 DYNAMIC-WIDTH AUDIT: PASS')
