@@ -1,0 +1,32 @@
+name: Build audit SGP Client 1.7.0-test.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-audit-client-1.7.0-test.2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build and audit cumulative candidate
+        run: bash release-staging/1.7.0-test.2/build-and-audit.sh
+      - name: Upload audited candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ClientPatch_1.7.0-test.2_AUDITED
+          path: out-170t2/
+          if-no-files-found: error
+          retention-days: 7
