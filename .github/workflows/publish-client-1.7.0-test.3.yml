@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC=release-staging/1.7.0-test.3
-          cat "$SRC"/final-source.part{0,1,2,3,4}.b64 > /tmp/source-bundle-test3-final.b64
+          cat "$SRC"/final-source.part0.b64 "$SRC"/final-source.part1.b64 "$SRC"/final-source.part20.b64 "$SRC"/final-source.part21.b64 "$SRC"/final-source.part22.b64 "$SRC"/final-source.part23.b64 "$SRC"/final-source.part3.b64 "$SRC"/final-source.part4.b64 > /tmp/source-bundle-test3-final.b64
           base64 -d /tmp/source-bundle-test3-final.b64 > /tmp/source-bundle-test3-final.zip
           echo "798adb53b56657188c42ee2bda25997ba821262b1ea09d2abc7379f2a93bfaee  /tmp/source-bundle-test3-final.zip" | sha256sum -c -
           test "$(stat -c %s /tmp/source-bundle-test3-final.zip)" = "24008"
@@ -55,3 +55,4 @@ jobs:
           path: out/SGP_ClientPatch_1.7.0-test.3.zip
           retention-days: 7
           if-no-files-found: error
+# exact-split-rerun
