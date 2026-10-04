@@ -164,3 +164,5 @@ jobs:
             exit 1
           fi
           echo "SUPERSEDED_TEST8_REMOVED"
+
+# rerun after dual version-label patch
