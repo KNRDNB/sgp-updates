@@ -147,7 +147,7 @@ public class BrandingFixV128 {
                 }
             }
         }
-        if(labelChanges!=1) throw new IllegalStateException("expected exactly one version-label change, got "+labelChanges);
+        if(labelChanges!=2) throw new IllegalStateException("expected exactly two version-label changes, got "+labelChanges);
 
         ClassWriter cw=new SafeClassWriter(ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS);
         cn.accept(cw); return cw.toByteArray();
