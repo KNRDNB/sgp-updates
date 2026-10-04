@@ -101,14 +101,29 @@ public class BrandingFixV126 {
         AbstractInsnNode end=blit.getNext();
         for(AbstractInsnNode n=start;n!=end;) { AbstractInsnNode next=n.getNext(); m.instructions.remove(n); n=next; }
 
-        // Move all three plaque text lines from x=84 to x=108, leaving a clean 4px logical gap.
-        int moved=0;
+        // Move exactly the three plaque text draws from x=84 to x=108.
+        // Patch by drawString call shape, not by raw opcode: Java may encode the same int constant differently.
+        int moved=0, draws=0;
         for(AbstractInsnNode n=m.instructions.getFirst();n!=null;n=n.getNext()) {
-            if(n instanceof IntInsnNode ii && ii.getOpcode()==Opcodes.BIPUSH && ii.operand==84) {
-                m.instructions.set(n,intInsn(108)); moved++;
+            if(n instanceof MethodInsnNode mi && mi.getOpcode()==Opcodes.INVOKEVIRTUAL
+                && mi.owner.equals("net/minecraft/client/gui/GuiGraphics")
+                && mi.name.equals("drawString")
+                && mi.desc.equals("(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I")) {
+                draws++;
+                AbstractInsnNode shadow=prevReal(n);
+                AbstractInsnNode color=prevReal(shadow);
+                AbstractInsnNode y=prevReal(color);
+                AbstractInsnNode x=prevReal(y);
+                int xv=intValue(x);
+                if(xv==84) {
+                    m.instructions.set(x,intInsn(108));
+                    moved++;
+                } else if(xv!=8) {
+                    throw new IllegalStateException("unexpected drawString x="+xv);
+                }
             }
         }
-        if(moved!=3) throw new IllegalStateException("expected exactly 3 plaque x=84 constants, got "+moved);
+        if(draws!=4 || moved!=3) throw new IllegalStateException("unexpected drawString layout draws="+draws+" moved="+moved);
 
         ClassWriter cw=new SafeClassWriter(ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS);
         cn.accept(cw); return cw.toByteArray();
@@ -118,6 +133,13 @@ public class BrandingFixV126 {
         n=n.getPrevious();
         while(n!=null && (n.getType()==AbstractInsnNode.LABEL || n.getType()==AbstractInsnNode.LINE || n.getType()==AbstractInsnNode.FRAME)) n=n.getPrevious();
         return n;
+    }
+    static int intValue(AbstractInsnNode n){
+        int op=n.getOpcode();
+        if(op>=Opcodes.ICONST_M1 && op<=Opcodes.ICONST_5) return op-Opcodes.ICONST_0;
+        if(n instanceof IntInsnNode ii) return ii.operand;
+        if(n instanceof LdcInsnNode ldc && ldc.cst instanceof Integer i) return i;
+        return Integer.MIN_VALUE;
     }
     static AbstractInsnNode intInsn(int v){
         if(v>=-1&&v<=5)return new InsnNode(Opcodes.ICONST_0+v);
