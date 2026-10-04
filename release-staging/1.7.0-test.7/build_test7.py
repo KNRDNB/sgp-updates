@@ -87,7 +87,8 @@ base_files={f.relative_to(BUILD).as_posix():sha_file(f) for f in BUILD.rglob('*'
 # Exact high-quality logo: tight-cropped from the owner's original transparent source,
 # premultiplied-alpha Lanczos downsample, low-alpha fringe floor 12, no runtime scaling.
 logo=WORK/'sgp_logo_96x37_hq.png'
-logo.write_bytes(base64.b64decode((STAGE/'sgp_logo_96x37_hq.b64').read_text('ascii')))
+logo_b64=''.join((STAGE/f'sgp_logo_96x37_hq.part{i}.b64').read_text('ascii') for i in range(5))
+logo.write_bytes(base64.b64decode(logo_b64))
 assert logo.stat().st_size==LOGO_SIZE
 assert sha_file(logo)==LOGO_SHA
 w,h,alphas,coords=png_rgba_alpha(logo.read_bytes())
