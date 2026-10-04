@@ -1,0 +1,27 @@
+name: Inspect test15 render coordinates
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-test15-render.yml"
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Print renderer bytecode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v1.7.0-test.15 --repo "${{ github.repository }}" -p SGP_ClientPatch_1.7.0-test.15.zip
+          unzip -q SGP_ClientPatch_1.7.0-test.15.zip files/mods/SGP-Client-Branding-1.2.13.jar
+          javap -classpath files/mods/SGP-Client-Branding-1.2.13.jar -p -c sgp.client.branding.SgpClientBranding > j.txt
+          sed -n '/onScreenRenderPost(/,/startUpdateCheck(/p' j.txt
