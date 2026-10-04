@@ -144,3 +144,5 @@ jobs:
           echo "SUPERSEDED_TEST6_REMOVED"
 
 # rerun-exact-hq-logo
+
+# diagnostic-rerun
