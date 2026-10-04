@@ -155,7 +155,7 @@ with zipfile.ZipFile(old_brand) as a, zipfile.ZipFile(new_brand) as b:
     assert 'version="1.2.2"' in toml and 'version="1.2.1"' not in toml
 javap = run("javap","-classpath",str(new_brand),"-p","-v","sgp.client.branding.SgpClientBranding").stdout
 assert "major version: 65" in javap
-assert r"^v(\d+)\.(\d+)\.(\d+)(?:-test\.(\d+))?$" in javap
+assert r"^v(\\\\d+)\\\\.(\\\\d+)\\\\.(\\\\d+)(?:-test\\\\.(\\\\d+))?$" in javap
 assert "java/util/Objects.requireNonNullElse" in javap
 assert "java/util/regex/Matcher.group:(I)Ljava/lang/String;" in javap
 
