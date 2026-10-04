@@ -142,3 +142,5 @@ jobs:
             exit 1
           fi
           echo "SUPERSEDED_TEST6_REMOVED"
+
+# rerun-exact-hq-logo
