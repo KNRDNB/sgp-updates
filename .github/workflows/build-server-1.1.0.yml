@@ -100,3 +100,5 @@ jobs:
 # rebuild after correcting Create SERVER config path to world/serverconfig
 
 # rerun after fixing active serverconfig directory creation
+
+# rerun after fixing builder syntax
