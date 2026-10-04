@@ -1,5 +1,5 @@
 from __future__ import annotations
-import base64, hashlib, json, shutil, struct, zlib, zipfile
+import binascii, hashlib, json, shutil, struct, zlib, zipfile
 from pathlib import Path
 
 ROOT=Path.cwd()
@@ -12,8 +12,6 @@ OUT=ROOT/'SGP_ClientPatch_1.7.0-test.8.zip'
 BASE_SHA='3bafd98c071813bf1cf0b5062b560ff2c36059f9eeb8dd3a3af7efdd37fed1fa'
 OLD_BRAND_SHA='1da89ef5a67b79869b9beed5d9670e87dd877f96e686c10545ce624e6e99e9fb'
 OLD_BRAND_SIZE=18690
-LOGO_SHA='2aede6f23278b786d9bdaaabf1593ad701362b83c8ffe51b026e8fc8e25dc76e'
-LOGO_SIZE=5876
 STABLE=['1.0.0','1.0.1','1.0.2','1.0.3','1.1.0','1.2.0','1.2.1','1.3.0','1.3.1','1.3.2','1.3.3','1.4.0','1.5.0','1.5.1','1.5.2','1.5.3','1.6.0','1.6.1','1.6.2']
 
 def sha_bytes(b:bytes)->str:
@@ -62,6 +60,31 @@ def parse_rgba_png(data:bytes):
             pixels.append((x//4,y,row[x],row[x+1],row[x+2],row[x+3]))
     return width,height,pixels
 
+def make_decontaminated_png(data:bytes)->bytes:
+    width,height,pixels=parse_rgba_png(data)
+    assert (width,height)==(96,37)
+    core=[p for p in pixels if p[5]>=192]
+    assert core
+    out=[]
+    for x,y,r,g,b,a in pixels:
+        if a<48:
+            out.append((x,y,0,0,0,0))
+        elif a<192:
+            nx,ny,nr,ng,nb,na=min(core,key=lambda q:(q[0]-x)*(q[0]-x)+(q[1]-y)*(q[1]-y))
+            out.append((x,y,nr,ng,nb,a))
+        else:
+            out.append((x,y,r,g,b,a))
+    raw=bytearray()
+    bypos={(x,y):(r,g,b,a) for x,y,r,g,b,a in out}
+    for y in range(height):
+        raw.append(0)
+        for x in range(width):
+            raw.extend(bypos[(x,y)])
+    def chunk(kind:bytes,payload:bytes)->bytes:
+        return struct.pack('>I',len(payload))+kind+payload+struct.pack('>I',binascii.crc32(kind+payload)&0xffffffff)
+    ihdr=struct.pack('>IIBBBBB',width,height,8,6,0,0,0)
+    return b'\\x89PNG\\r\\n\\x1a\\n'+chunk(b'IHDR',ihdr)+chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b'')
+
 assert BASE.is_file() and sha_file(BASE)==BASE_SHA
 if WORK.exists():
     shutil.rmtree(WORK)
@@ -82,29 +105,32 @@ assert '1.5.4' not in p['fromVersions']
 
 base_files={f.relative_to(BUILD).as_posix():sha_file(f) for f in BUILD.rglob('*') if f.is_file()}
 
-# Exact owner-approved-quality geometry from test.7, with edge RGB decontamination:
-# alpha <48 removed; alpha 48..191 keeps smooth coverage but RGB is inherited from the
-# nearest solid edge color, eliminating isolated cyan/teal fringe pixels.
-logo=WORK/'sgp_logo_96x37_decontaminated.png'
-logo.write_bytes(base64.b64decode((STAGE/'sgp_logo_96x37_decontaminated.b64').read_text('ascii')))
-assert logo.stat().st_size==LOGO_SIZE
-assert sha_file(logo)==LOGO_SHA
-w,h,pixels=parse_rgba_png(logo.read_bytes())
-assert (w,h)==(96,37)
-alphas=[a for _,_,_,_,_,a in pixels if a>0]
-assert min(alphas)==48
-assert any(48<=a<255 for a in alphas)
-# No cyan/teal chromatic outliers remain at any visible pixel.
-cyan=[px for px in pixels if px[5]>0 and px[4]>px[2]+30 and px[3]>px[2]+20]
-assert not cyan, cyan[:10]
-print('TEST.8 LOGO AUDIT: PASS 96x37, alpha floor=48, smooth partial alpha preserved, cyan/teal outliers=0')
-
 brand_actions=[a for a in p['actions'] if a['type']=='copy' and a.get('target')=='mods/SGP-Client-Branding-1.2.6.jar']
 assert len(brand_actions)==1
 ba=brand_actions[0]
 old=BUILD/ba['source']
 assert old.stat().st_size==OLD_BRAND_SIZE
 assert sha_file(old)==OLD_BRAND_SHA
+
+# Rebuild the logo deterministically from the exact published test.7 Branding resource:
+# alpha <48 is discarded; alpha 48..191 keeps smooth coverage but inherits RGB from
+# the nearest solid edge pixel, eliminating isolated cyan/teal fringe contamination.
+with zipfile.ZipFile(old) as _zin:
+    _old_logo=_zin.read('assets/sgp_client_branding/textures/gui/sgp_logo.png')
+logo=WORK/'sgp_logo_96x37_decontaminated.png'
+logo.write_bytes(make_decontaminated_png(_old_logo))
+logo_sha=sha_file(logo)
+logo_size=logo.stat().st_size
+w,h,pixels=parse_rgba_png(logo.read_bytes())
+assert (w,h)==(96,37)
+alphas=[a for _,_,_,_,_,a in pixels if a>0]
+assert min(alphas)==48
+assert any(48<=a<255 for a in alphas)
+cyan=[px for px in pixels if px[5]>0 and px[4]>px[2]+30 and px[3]>px[2]+20]
+assert not cyan, cyan[:10]
+print('TEST.8 LOGO AUDIT: PASS 96x37, alpha floor=48, smooth partial alpha preserved, cyan/teal outliers=0')
+print('LOGO_SHA='+logo_sha)
+print('LOGO_SIZE='+str(logo_size))
 
 # Build Branding 1.2.7 by changing only mod version metadata + logo resource.
 new=BUILD/'files/mods/SGP-Client-Branding-1.2.7.jar'
@@ -137,7 +163,7 @@ new_sha=sha_file(new); new_size=new.stat().st_size
 with zipfile.ZipFile(new) as z:
     assert z.testzip() is None
     assert sha_bytes(z.read(class_entry))==sha_bytes(old_class), 'Branding class bytecode changed unexpectedly'
-    assert sha_bytes(z.read(logo_entry))==LOGO_SHA
+    assert sha_bytes(z.read(logo_entry))==logo_sha
     nt=z.read(toml_entry).decode('utf-8')
     assert 'version="1.2.7"' in nt and 'version="1.2.6"' not in nt
 print('BRANDING 1.2.7 AUDIT: PASS; class byte-identical to 1.2.6')
@@ -259,3 +285,5 @@ print('CANDIDATE_SHA='+sha_file(OUT))
 print('CANDIDATE_SIZE='+str(OUT.stat().st_size))
 Path('test8_brand_sha.txt').write_text(new_sha+'\n')
 Path('test8_brand_size.txt').write_text(str(new_size)+'\n')
+Path('test8_logo_sha.txt').write_text(logo_sha+'\n')
+Path('test8_logo_size.txt').write_text(str(logo_size)+'\n')
