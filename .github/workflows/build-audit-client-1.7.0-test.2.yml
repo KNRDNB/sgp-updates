@@ -7,7 +7,7 @@ on:
       - ".github/workflows/build-audit-client-1.7.0-test.2.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-audit:
@@ -30,3 +30,4 @@ jobs:
           path: out-170t2/
           if-no-files-found: error
           retention-days: 7
+# publish-v2
