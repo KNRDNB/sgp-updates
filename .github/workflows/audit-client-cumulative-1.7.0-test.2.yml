@@ -1,0 +1,21 @@
+name: Audit historical client manifests for 1.7.0-test.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-client-cumulative-1.7.0-test.2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact historical manifests
+        run: bash release-staging/1.7.0-test.2/audit-historical.sh
