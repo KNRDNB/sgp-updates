@@ -175,3 +175,5 @@ jobs:
           echo "FAILED_TEST12_REMOVED"
 
 # rerun after full-cube connected-component fix
+
+# rerun after preserving original test.5 left padding
