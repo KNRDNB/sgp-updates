@@ -179,3 +179,5 @@ jobs:
 # rerun after preserving original test.5 left padding
 
 # rerun after exact 58x48 unclipped cube construction
+
+# rerun after preserving test.5 left padding
