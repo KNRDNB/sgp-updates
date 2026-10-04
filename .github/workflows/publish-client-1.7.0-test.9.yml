@@ -1,0 +1,160 @@
+name: Publish SGP Client 1.7.0-test.9
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.7.0-test.9.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: v1.7.0-test.9
+      ASSET: SGP_ClientPatch_1.7.0-test.9.zip
+      BASE_TAG: v1.7.0-test.8
+      BASE_ASSET: SGP_ClientPatch_1.7.0-test.8.zip
+      BASE_SHA: e40d39d1ab657c4a31870bc6ac229526bc8207687dabc7457d405271b67c75a9
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact published test.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing same-version replacement." >&2
+            exit 1
+          fi
+          gh release download "$BASE_TAG" --repo "$REPO" -p "$BASE_ASSET"
+          echo "$BASE_SHA  $BASE_ASSET" | sha256sum -c -
+          unzip -t "$BASE_ASSET" >/dev/null
+
+      - name: Build and audit cumulative test.9
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.7.0-test.9/build_test9.py
+          sha256sum "$ASSET" | tee candidate.sha256
+          echo "BRAND_SHA=$(cat test9_brand_sha.txt)"
+          echo "BRAND_SIZE=$(cat test9_brand_size.txt)"
+          echo "CUBE_SHA=$(cat test9_cube_sha.txt)"
+          echo "CUBE_SIZE=$(cat test9_cube_size.txt)"
+          echo "CUBE_WIDTH=$(cat test9_cube_width.txt)"
+          echo "TEXT_X=$(cat test9_text_x.txt)"
+
+      - name: Upload exact audited candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ClientPatch_1.7.0-test.9_AUDITED
+          path: SGP_ClientPatch_1.7.0-test.9.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          CUBE_WIDTH="$(cat test9_cube_width.txt)"
+          TEXT_X="$(cat test9_text_x.txt)"
+          cat > release-notes.md <<EOF
+          ## SGP Client 1.7.0-test.9
+
+          Cumulative TEST planned stable линии **1.7.0**.
+
+          - Прямое обновление со всех accepted stable **1.0.0–1.6.2**.
+          - Forward repair с **1.7.0-test.1 … test.8**.
+          - **SGP Client Branding 1.2.8**: raster-надпись **SGP** полностью убрана.
+          - В texture оставлен только жёлтый куб, pixel-exact вырезанный из очищенного test.8 logo.
+          - Версия теперь рисуется Minecraft-текстом: **«Версия SGP: <version>»**.
+          - Cube: 1:1, width ${CUBE_WIDTH}, text x=${TEXT_X}; plaque right edge/layout остального состояния не менялись.
+          - Все non-Branding payload byte-identical к test.8.
+
+          Owner Minecraft runtime visual check обязателен перед stable 1.7.0.
+          EOF
+          gh release create "$TAG" "$ASSET" \
+            --repo "$REPO" \
+            --target "${{ github.sha }}" \
+            --title "SGP Client 1.7.0-test.9" \
+            --notes-file release-notes.md \
+            --prerelease
+          echo "$SHA" > expected.sha
+
+      - name: Redownload and verify live asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          BRAND_SHA="$(cat test9_brand_sha.txt)"
+          BRAND_SIZE="$(cat test9_brand_size.txt)"
+          CUBE_SHA="$(cat test9_cube_sha.txt)"
+          CUBE_WIDTH="$(cat test9_cube_width.txt)"
+          TEXT_X="$(cat test9_text_x.txt)"
+
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "true"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].state')" = "uploaded"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+
+          python3 - "$BRAND_SHA" "$BRAND_SIZE" "$CUBE_SHA" "$CUBE_WIDTH" <<'PY'
+          import hashlib, io, json, sys, zipfile
+          brand_sha=sys.argv[1]; brand_size=int(sys.argv[2]); cube_sha=sys.argv[3]; cube_w=int(sys.argv[4])
+          stable=["1.0.0","1.0.1","1.0.2","1.0.3","1.1.0","1.2.0","1.2.1","1.3.0","1.3.1","1.3.2","1.3.3","1.4.0","1.5.0","1.5.1","1.5.2","1.5.3","1.6.0","1.6.1","1.6.2"]
+          tests=["1.7.0-test.1","1.7.0-test.2","1.7.0-test.3","1.7.0-test.4","1.7.0-test.5","1.7.0-test.6","1.7.0-test.7","1.7.0-test.8"]
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.7.0-test.9"
+              assert p["toVersion"]=="1.7.0-test.9"
+              assert p["fromVersions"]==stable+tests
+              assert "files/mods/SGP-Client-Branding-1.2.7.jar" not in z.namelist()
+              brand=z.read("files/mods/SGP-Client-Branding-1.2.8.jar")
+              assert len(brand)==brand_size
+              assert hashlib.sha256(brand).hexdigest()==brand_sha
+              with zipfile.ZipFile(io.BytesIO(brand)) as bz:
+                  toml=bz.read("META-INF/neoforge.mods.toml").decode()
+                  assert 'version="1.2.8"' in toml
+                  logo=bz.read("assets/sgp_client_branding/textures/gui/sgp_logo.png")
+                  assert hashlib.sha256(logo).hexdigest()==cube_sha
+                  assert int.from_bytes(logo[16:20],"big")==cube_w
+                  assert int.from_bytes(logo[20:24],"big")==37
+                  cls=bz.read("sgp/client/branding/SgpClientBranding.class")
+                  assert "Версия SGP: ".encode() in cls
+                  assert "Версия: ".encode() not in cls
+          print("LIVE TEST.9 SHA/ZIP/MANIFEST/BRANDING: PASS")
+          PY
+
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
+          echo "PUBLISHED_BRAND_SHA=$BRAND_SHA"
+          echo "PUBLISHED_BRAND_SIZE=$BRAND_SIZE"
+          echo "PUBLISHED_CUBE_SHA=$CUBE_SHA"
+          echo "PUBLISHED_CUBE_WIDTH=$CUBE_WIDTH"
+          echo "PUBLISHED_TEXT_X=$TEXT_X"
+
+      - name: Remove superseded failed test.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release delete "$BASE_TAG" --repo "$REPO" --cleanup-tag -y
+          if gh api "repos/$REPO/releases/tags/$BASE_TAG" >/dev/null 2>&1; then
+            echo "Superseded test.8 still exists." >&2
+            exit 1
+          fi
+          echo "SUPERSEDED_TEST8_REMOVED"
