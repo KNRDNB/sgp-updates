@@ -1,0 +1,106 @@
+name: Publish SGP Client 1.7.0 stable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.7.0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TEST_TAG: v1.7.0-test.16
+      TEST_ASSET: SGP_ClientPatch_1.7.0-test.16.zip
+      TEST_SHA: 80535ebbf29aa9167e8ef8408dcb907069561d95a9e0d5fe95a9764395b93419
+      TAG: v1.7.0
+      ASSET: SGP_ClientPatch_1.7.0.zip
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact accepted test.16
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Stable release already exists" >&2
+            exit 1
+          fi
+          gh release download "$TEST_TAG" --repo "$REPO" -p "$TEST_ASSET"
+          echo "$TEST_SHA  $TEST_ASSET" | sha256sum -c -
+          unzip -t "$TEST_ASSET" >/dev/null
+
+      - name: Build stable identity and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.7.0/build_stable170.py
+          sha256sum "$ASSET" | tee stable.sha256
+
+      - name: Publish stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          cat > notes.md <<'EOF'
+          ## SGP Client 1.7.0
+
+          Stable release promoted from owner-runtime-PASS **1.7.0-test.16**.
+
+          - Same tested payload/action set as test.16.
+          - Cumulative direct update from every accepted stable **1.0.0–1.6.2**.
+          - Forward repair from **1.7.0-test.1 … test.16**.
+          - Building Wands 3.0.5 + SGP Wands Paxel Compat.
+          - Wands limits 128 / 256 / 512 / 1024 / 4096 / 8192.
+          - SGP Fixes internal rev 1.10 with End's Delight × BetterEnd Chorus Succulent acquisition recipe.
+          - SGP RU Localization internal 1.8.
+          - SGP Client Branding 1.2.14 with dynamic plaque width and centered update state.
+          - Create Rope Pulley maxRopeLength=512.
+
+          Minecraft 1.21.1 · NeoForge 21.1.249 · Java 21
+          EOF
+          gh release create "$TAG" "$ASSET" --repo "$REPO" --target "${{ github.sha }}" --title "SGP Client 1.7.0" --notes-file notes.md
+          echo "$SHA" > expected.sha
+
+      - name: Verify live stable asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "false"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.7.0"
+              assert p["toVersion"]=="1.7.0"
+              assert p["fromVersions"][-1]=="1.7.0-test.16"
+              for a in p["actions"]:
+                  if a["type"]=="copy":
+                      b=z.read(a["source"])
+                      assert len(b)==a["size"]
+                      assert hashlib.sha256(b).hexdigest().lower()==a["sha256"].lower()
+          print("LIVE_STABLE_170_VERIFY_PASS")
+          PY
+          # Current canonical rule: retain the last successful TEST as reference fixture.
+          gh api "repos/$REPO/releases/tags/$TEST_TAG" >/dev/null
+          echo "SUCCESSFUL_TEST16_RETAINED"
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
