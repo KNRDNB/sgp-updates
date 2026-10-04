@@ -44,6 +44,8 @@ jobs:
           sha256sum "$ASSET" | tee candidate.sha256
           echo "BRAND_SHA=$(cat test8_brand_sha.txt)"
           echo "BRAND_SIZE=$(cat test8_brand_size.txt)"
+          echo "LOGO_SHA=$(cat test8_logo_sha.txt)"
+          echo "LOGO_SIZE=$(cat test8_logo_size.txt)"
 
       - name: Upload exact audited candidate
         uses: actions/upload-artifact@v4
@@ -82,6 +84,7 @@ jobs:
           EXPECTED="$(cat expected.sha)"
           BRAND_SHA="$(cat test8_brand_sha.txt)"
           BRAND_SIZE="$(cat test8_brand_size.txt)"
+          LOGO_SHA="$(cat test8_logo_sha.txt)"
           REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
           test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
           test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "true"
@@ -96,9 +99,9 @@ jobs:
           echo "$EXPECTED  verify.zip" | sha256sum -c -
           unzip -t verify.zip >/dev/null
 
-          python3 - "$BRAND_SHA" "$BRAND_SIZE" <<'PY'
+          python3 - "$BRAND_SHA" "$BRAND_SIZE" "$LOGO_SHA" <<'PY'
           import hashlib, io, json, sys, zipfile
-          brand_sha=sys.argv[1]; brand_size=int(sys.argv[2])
+          brand_sha=sys.argv[1]; brand_size=int(sys.argv[2]); logo_sha=sys.argv[3]
           stable=["1.0.0","1.0.1","1.0.2","1.0.3","1.1.0","1.2.0","1.2.1","1.3.0","1.3.1","1.3.2","1.3.3","1.4.0","1.5.0","1.5.1","1.5.2","1.5.3","1.6.0","1.6.1","1.6.2"]
           with zipfile.ZipFile("verify.zip") as z:
               p=json.loads(z.read("patch.json"))
@@ -113,7 +116,7 @@ jobs:
                   toml=bz.read("META-INF/neoforge.mods.toml").decode()
                   assert 'version="1.2.7"' in toml
                   logo=bz.read("assets/sgp_client_branding/textures/gui/sgp_logo.png")
-                  assert hashlib.sha256(logo).hexdigest()=="2aede6f23278b786d9bdaaabf1593ad701362b83c8ffe51b026e8fc8e25dc76e"
+                  assert hashlib.sha256(logo).hexdigest()==logo_sha
                   assert int.from_bytes(logo[16:20],"big")==96
                   assert int.from_bytes(logo[20:24],"big")==37
           print("LIVE TEST.8 SHA/ZIP/MANIFEST/BRANDING: PASS")
@@ -124,6 +127,7 @@ jobs:
           echo "PUBLISHED_SHA=$EXPECTED"
           echo "PUBLISHED_BRAND_SHA=$BRAND_SHA"
           echo "PUBLISHED_BRAND_SIZE=$BRAND_SIZE"
+          echo "PUBLISHED_LOGO_SHA=$LOGO_SHA"
 
       - name: Remove superseded failed test.7
         shell: bash
@@ -135,3 +139,5 @@ jobs:
             exit 1
           fi
           echo "SUPERSEDED_TEST7_REMOVED"
+
+# deterministic-logo-rerun
