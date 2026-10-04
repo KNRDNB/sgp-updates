@@ -177,3 +177,5 @@ jobs:
 # rerun after full-cube connected-component fix
 
 # rerun after preserving original test.5 left padding
+
+# rerun after exact 58x48 unclipped cube construction
