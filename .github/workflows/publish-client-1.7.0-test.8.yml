@@ -1,0 +1,137 @@
+name: Publish SGP Client 1.7.0-test.8
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.7.0-test.8.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: v1.7.0-test.8
+      ASSET: SGP_ClientPatch_1.7.0-test.8.zip
+      BASE_TAG: v1.7.0-test.7
+      BASE_ASSET: SGP_ClientPatch_1.7.0-test.7.zip
+      BASE_SHA: 3bafd98c071813bf1cf0b5062b560ff2c36059f9eeb8dd3a3af7efdd37fed1fa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact published test.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing same-version replacement." >&2
+            exit 1
+          fi
+          gh release download "$BASE_TAG" --repo "$REPO" -p "$BASE_ASSET"
+          echo "$BASE_SHA  $BASE_ASSET" | sha256sum -c -
+          unzip -t "$BASE_ASSET" >/dev/null
+
+      - name: Build and audit cumulative test.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.7.0-test.8/build_test8.py
+          sha256sum "$ASSET" | tee candidate.sha256
+          echo "BRAND_SHA=$(cat test8_brand_sha.txt)"
+          echo "BRAND_SIZE=$(cat test8_brand_size.txt)"
+
+      - name: Upload exact audited candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ClientPatch_1.7.0-test.8_AUDITED
+          path: SGP_ClientPatch_1.7.0-test.8.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          cat > release-notes.md <<'EOF'
+          ## SGP Client 1.7.0-test.8
+
+          Cumulative TEST planned stable линии **1.7.0**.
+
+          - Прямое обновление со всех accepted stable **1.0.0–1.6.2**.
+          - Forward repair с **1.7.0-test.1 … test.7**.
+          - **SGP Client Branding 1.2.7**: visual quality/geometry test.7 сохранены, но logo raster очищен от cyan/teal fringe.
+          - Очень слабый edge alpha ниже 48 удалён; нормальный partial-alpha antialiasing сохранён.
+          - Branding Java class/layout byte-identical к 1.2.6: logo 96×37, 1:1 render, text x=108.
+          - Все non-Branding payload byte-identical к test.7.
+
+          Owner Minecraft runtime visual check обязателен перед stable 1.7.0.
+          EOF
+          gh release create "$TAG" "$ASSET"             --repo "$REPO"             --target "${{ github.sha }}"             --title "SGP Client 1.7.0-test.8"             --notes-file release-notes.md             --prerelease
+          echo "$SHA" > expected.sha
+
+      - name: Redownload and verify live asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          BRAND_SHA="$(cat test8_brand_sha.txt)"
+          BRAND_SIZE="$(cat test8_brand_size.txt)"
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "true"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].state')" = "uploaded"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+
+          python3 - "$BRAND_SHA" "$BRAND_SIZE" <<'PY'
+          import hashlib, io, json, sys, zipfile
+          brand_sha=sys.argv[1]; brand_size=int(sys.argv[2])
+          stable=["1.0.0","1.0.1","1.0.2","1.0.3","1.1.0","1.2.0","1.2.1","1.3.0","1.3.1","1.3.2","1.3.3","1.4.0","1.5.0","1.5.1","1.5.2","1.5.3","1.6.0","1.6.1","1.6.2"]
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.7.0-test.8"
+              assert p["toVersion"]=="1.7.0-test.8"
+              assert p["fromVersions"]==stable+["1.7.0-test.1","1.7.0-test.2","1.7.0-test.3","1.7.0-test.4","1.7.0-test.5","1.7.0-test.6","1.7.0-test.7"]
+              assert "files/mods/SGP-Client-Branding-1.2.6.jar" not in z.namelist()
+              brand=z.read("files/mods/SGP-Client-Branding-1.2.7.jar")
+              assert len(brand)==brand_size
+              assert hashlib.sha256(brand).hexdigest()==brand_sha
+              with zipfile.ZipFile(io.BytesIO(brand)) as bz:
+                  toml=bz.read("META-INF/neoforge.mods.toml").decode()
+                  assert 'version="1.2.7"' in toml
+                  logo=bz.read("assets/sgp_client_branding/textures/gui/sgp_logo.png")
+                  assert hashlib.sha256(logo).hexdigest()=="2aede6f23278b786d9bdaaabf1593ad701362b83c8ffe51b026e8fc8e25dc76e"
+                  assert int.from_bytes(logo[16:20],"big")==96
+                  assert int.from_bytes(logo[20:24],"big")==37
+          print("LIVE TEST.8 SHA/ZIP/MANIFEST/BRANDING: PASS")
+          PY
+
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
+          echo "PUBLISHED_BRAND_SHA=$BRAND_SHA"
+          echo "PUBLISHED_BRAND_SIZE=$BRAND_SIZE"
+
+      - name: Remove superseded failed test.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release delete "$BASE_TAG" --repo "$REPO" --cleanup-tag -y
+          if gh api "repos/$REPO/releases/tags/$BASE_TAG" >/dev/null 2>&1; then
+            echo "Superseded test.7 still exists." >&2
+            exit 1
+          fi
+          echo "SUPERSEDED_TEST7_REMOVED"
