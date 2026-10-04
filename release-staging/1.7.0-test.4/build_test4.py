@@ -67,9 +67,12 @@ r=run('java',*verify_exports,'-cp',str(verify),'AsmVerify',str(new_brand),'sgp/c
 assert 'ASM BASIC VERIFY: PASS methods=17' in r.stdout
 javap=run('javap','-classpath',str(new_brand),'-p','-c','-v','sgp.client.branding.SgpClientBranding').stdout
 for needle in ['major version: 65','AbstractTexture.setFilter:(ZZ)V','TextureManager.getTexture:',
-               'Method loadPackVersion:()Ljava/lang/String;','Field packVersion:Ljava/lang/String;',
-               'String Версия: ','String Доступно обновление','String Новая версия: ','String Обновить']:
+               'Method loadPackVersion:()Ljava/lang/String;','Field packVersion:Ljava/lang/String;']:
     assert needle in javap,needle
+with zipfile.ZipFile(new_brand) as bz:
+    cls=bz.read('sgp/client/branding/SgpClientBranding.class')
+    for label in ['Версия: ','Доступно обновление','Новая версия: ','Обновить']:
+        assert label.encode('utf-8') in cls,label
 init=javap[javap.index('private static void onScreenInitPost'):javap.index('private static void onScreenRenderPost')]
 assert init.count('Method loadPackVersion:()Ljava/lang/String;')==1
 assert 'putstatic' in init and 'Field packVersion:Ljava/lang/String;' in init
