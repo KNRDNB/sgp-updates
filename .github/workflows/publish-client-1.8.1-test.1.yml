@@ -1,0 +1,233 @@
+name: Publish SGP Client 1.8.1-test.1 Create Chipped hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.8.1-test.1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      BASE_TAG: v1.8.0
+      BASE_ASSET: SGP_ClientPatch_1.8.0.zip
+      BASE_SHA: 34c6f2b223892b92a1c6f1da0074802de474cfe4116fcd5c90e3d869081ef9bb
+      CHIPPED_VERSION_ID: eqVowbGc
+      CHIPPED_FILE: chipped-neoforge-1.21.1-4.0.2.jar
+      CHIPPED_SHA: 18ac6fd6b30db4922ccc6ee8bea5b113f69587505b7529834f37ace506427291
+      MOD_JAR: SGP-Create-Chipped-Cutting-1.0.0.jar
+      TAG: v1.8.1-test.1
+      ASSET: SGP_ClientPatch_1.8.1-test.1.zip
+      OLD_TEST_TAG: v1.8.0-test.1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Download exact base and Chipped 4.0.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release already exists" >&2
+            exit 1
+          fi
+          gh release download "$BASE_TAG" --repo "$REPO" -p "$BASE_ASSET"
+          echo "$BASE_SHA  $BASE_ASSET" | sha256sum -c -
+          unzip -t "$BASE_ASSET" >/dev/null
+
+          curl -fsSL --retry 3 -A "SGP-PatchBuilder/1.0" \
+            "https://api.modrinth.com/v2/version/$CHIPPED_VERSION_ID" -o chipped-version.json
+          test "$(jq -r '.version_number' chipped-version.json)" = "4.0.2"
+          test "$(jq -r '.loaders | index("neoforge") != null' chipped-version.json)" = "true"
+          test "$(jq -r '.game_versions | index("1.21.1") != null' chipped-version.json)" = "true"
+          URL="$(jq -r --arg f "$CHIPPED_FILE" '.files[] | select(.filename==$f) | .url' chipped-version.json)"
+          test -n "$URL" && test "$URL" != "null"
+          curl -fL --retry 3 -A "SGP-PatchBuilder/1.0" -o "$CHIPPED_FILE" "$URL"
+          echo "$CHIPPED_SHA  $CHIPPED_FILE" | sha256sum -c -
+          unzip -t "$CHIPPED_FILE" >/dev/null
+
+      - name: Prove dynamic family coverage equals old 6968 routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.8.1-test.1/generate_families.py
+
+      - name: Build runtime bridge mod
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p release-staging/1.8.1-test.1/compatmod build --no-daemon --stacktrace
+          cp release-staging/1.8.1-test.1/compatmod/build/libs/SGP-Create-Chipped-Cutting-1.0.0.jar "$MOD_JAR"
+          unzip -t "$MOD_JAR" >/dev/null
+          sha256sum "$MOD_JAR"
+
+      - name: Runtime bridge static and Mixin preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -l "$MOD_JAR" > mod-files.txt
+          grep -Fq 'META-INF/neoforge.mods.toml' mod-files.txt
+          grep -Fq 'sgp_create_chipped_cutting.mixins.json' mod-files.txt
+          grep -Fq 'sgp/createchippedcutting/mixin/SawBlockEntityMixin.class' mod-files.txt
+          if grep -Eq 'data/.*/recipes?/' mod-files.txt; then
+            echo 'Runtime bridge must not register recipe JSON files' >&2
+            exit 1
+          fi
+
+          unzip -p "$MOD_JAR" META-INF/neoforge.mods.toml > mod.toml
+          grep -Fq 'modId="sgp_create_chipped_cutting"' mod.toml
+          grep -Fq 'modId="create"' mod.toml
+          grep -Fq 'modId="chipped"' mod.toml
+
+          CREATE_JAR="$(find ~/.gradle/caches -type f -name 'create-1.21.1-6.0.10-280-slim.jar' | head -n1)"
+          test -n "$CREATE_JAR"
+          echo "CREATE_COMPILE_JAR=$CREATE_JAR"
+
+          javap -classpath "$MOD_JAR" -p -v sgp.createchippedcutting.mixin.SawBlockEntityMixin > hotfix-mixin.txt
+          grep -Fq 'major version: 65' hotfix-mixin.txt
+          grep -Fq 'org.spongepowered.asm.mixin.Mixin' hotfix-mixin.txt
+          grep -Fq 'org.spongepowered.asm.mixin.injection.Redirect' hotfix-mixin.txt
+          grep -Fq 'RecipeFinder;get' hotfix-mixin.txt
+
+          javap -classpath "$CREATE_JAR" -p -s com.simibubi.create.content.kinetics.saw.SawBlockEntity > create-saw.txt
+          grep -Fq 'private java.util.List<net.minecraft.world.item.crafting.RecipeHolder<? extends net.minecraft.world.item.crafting.Recipe<?>>> getRecipes();' create-saw.txt
+          grep -A1 -F 'getRecipes();' create-saw.txt | grep -Fq 'descriptor: ()Ljava/util/List;'
+
+          javap -classpath "$CREATE_JAR" -p -s com.simibubi.create.foundation.recipe.RecipeFinder > create-recipefinder.txt
+          grep -Fq 'descriptor: (Ljava/lang/Object;Lnet/minecraft/world/level/Level;Ljava/util/function/Predicate;)Ljava/util/List;' create-recipefinder.txt
+          echo 'CREATE_CHIPPED_RUNTIME_MIXIN_PREFLIGHT_PASS'
+
+      - name: Build cumulative client TEST and matching server candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.8.1-test.1/build_client_181_test1.py | tee client-build.txt
+          python3 release-staging/1.8.1-test.1/build_server_121.py | tee server-build.txt
+          sha256sum "$ASSET"
+          sha256sum SGP_ServerPatch_1.2.1.zip
+
+      - name: Exact package audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, io, json, zipfile
+          with zipfile.ZipFile('SGP_ClientPatch_1.8.1-test.1.zip') as z:
+              assert z.testzip() is None
+              p=json.loads(z.read('patch.json'))
+              assert p['patchId']=='sgp-client-1.8.1-test.1'
+              assert p['toVersion']=='1.8.1-test.1'
+              assert p['fromVersions'][-1]=='1.8.0'
+              assert not any(a.get('actionId')=='install-sgp-create-chipped-cutting' for a in p['actions'])
+              assert any(a.get('actionId')=='remove-sgp-create-chipped-cutting-datapack' for a in p['actions'])
+              assert any(a.get('actionId')=='install-sgp-create-chipped-cutting-runtime-1-0-0' for a in p['actions'])
+              assert 'files/config/paxi/datapacks/SGP_Create_Chipped_Cutting_MC1.21.1.zip' not in z.namelist()
+              mod=z.read('files/mods/SGP-Create-Chipped-Cutting-1.0.0.jar')
+              with zipfile.ZipFile(io.BytesIO(mod)) as mz:
+                  assert mz.testzip() is None
+                  assert not any('/recipe/' in n or '/recipes/' in n for n in mz.namelist())
+          with zipfile.ZipFile('SGP_ServerPatch_1.2.1.zip') as z:
+              assert z.testzip() is None
+              assert sorted(z.namelist())==sorted(['.sgp/pack.json','.sgp/history.json','mods/SGP-Create-Chipped-Cutting-1.0.0.jar'])
+              assert json.loads(z.read('.sgp/pack.json'))['version']=='1.2.1'
+              assert json.loads(z.read('.sgp/history.json'))['currentVersion']=='1.2.1'
+              assert 'config/paxi/datapacks/SGP_Create_Chipped_Cutting_MC1.21.1.zip' not in z.namelist()
+          print('HOTFIX_EXACT_PACKAGE_AUDIT_PASS')
+          PY
+
+      - name: Publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          MOD_SHA="$(cat hotfix_mod_sha.txt)"
+          SERVER_SHA="$(cat server121_sha.txt)"
+          cat > notes.md <<EOF
+          ## SGP Client 1.8.1-test.1
+
+          Performance hotfix TEST for Create × Chipped Mechanical Saw processing.
+
+          - Removes the 1.8.0 datapack with **6,968 registered create:cutting recipes**.
+          - Installs **SGP-Create-Chipped-Cutting-1.0.0.jar** instead.
+          - Runtime bridge uses the same **277 Chipped 4.0.2 workbench family tags**, but only materializes candidates for the current saw input; it registers **zero** recipe JSONs.
+          - Mechanical Saw filter selection and 50-tick processing are preserved.
+          - Static route-equivalence audit proves the dynamic family model covers the same **6,968 family→output routes** as the old datapack.
+          - No MineColonies, simulation-distance, JVM/GC or unrelated config changes.
+
+          Runtime validation required:
+          1. Verify representative Create × Chipped saw conversions, including an overlapping lantern family.
+          2. Re-run spark under comparable load and compare SawBlockEntity/getRecipes, MSPT mean/p95 and TPS.
+
+          Mod SHA-256: `$MOD_SHA`
+          Prebuilt matching server 1.2.1 candidate SHA-256: `$SERVER_SHA` (not handed off until client TEST PASS).
+
+          Minecraft 1.21.1 · NeoForge 21.1.249 · Create 6.0.10 · Chipped 4.0.2
+          EOF
+          gh release create "$TAG" "$ASSET" --repo "$REPO" --target "${{ github.sha }}" \
+            --title 'SGP Client 1.8.1-test.1' --notes-file notes.md --prerelease
+          echo "$SHA" > expected.sha
+
+      - name: Verify live prerelease and retire previous TEST
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = 'false'
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = 'true'
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = '1'
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          gh api -H 'Accept: application/octet-stream' "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+          python3 - <<'PY'
+          import io,json,zipfile
+          with zipfile.ZipFile('verify.zip') as z:
+              p=json.loads(z.read('patch.json'))
+              assert p['patchId']=='sgp-client-1.8.1-test.1'
+              assert p['toVersion']=='1.8.1-test.1'
+              assert p['fromVersions'][-1]=='1.8.0'
+              assert 'files/config/paxi/datapacks/SGP_Create_Chipped_Cutting_MC1.21.1.zip' not in z.namelist()
+              m=z.read('files/mods/SGP-Create-Chipped-Cutting-1.0.0.jar')
+              with zipfile.ZipFile(io.BytesIO(m)) as mz:
+                  assert mz.testzip() is None
+                  assert not any('/recipe/' in n or '/recipes/' in n for n in mz.namelist())
+          print('LIVE_CLIENT_181_TEST1_VERIFY_PASS')
+          PY
+
+          if gh api "repos/$REPO/releases/tags/$OLD_TEST_TAG" >/dev/null 2>&1; then
+            gh release delete "$OLD_TEST_TAG" --repo "$REPO" --cleanup-tag -y
+          fi
+          ! gh api "repos/$REPO/releases/tags/$OLD_TEST_TAG" >/dev/null 2>&1
+          ! gh api "repos/$REPO/git/ref/tags/$OLD_TEST_TAG" >/dev/null 2>&1
+          echo 'PREVIOUS_TEST_RETIRED_PASS'
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
+
+      - name: Upload matching server candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ServerPatch_1.2.1_CANDIDATE_DO_NOT_HANDOFF_BEFORE_CLIENT_PASS
+          path: SGP_ServerPatch_1.2.1.zip
+          retention-days: 14
+          if-no-files-found: error
