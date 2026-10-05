@@ -1,0 +1,107 @@
+name: Publish SGP Client 1.8.0 stable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.8.0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TEST_TAG: v1.8.0-test.1
+      TEST_ASSET: SGP_ClientPatch_1.8.0-test.1.zip
+      TEST_SHA: 440fff574bb67eb91ed252ad38eb1811b29332499f70397dfea1c173502686e6
+      TAG: v1.8.0
+      ASSET: SGP_ClientPatch_1.8.0.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact owner-runtime-PASS TEST
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Stable release already exists" >&2
+            exit 1
+          fi
+          gh release download "$TEST_TAG" --repo "$REPO" -p "$TEST_ASSET"
+          echo "$TEST_SHA  $TEST_ASSET" | sha256sum -c -
+          unzip -t "$TEST_ASSET" >/dev/null
+
+      - name: Build stable identity and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.8.0/build_stable180.py
+          sha256sum "$ASSET" | tee stable.sha256
+
+      - name: Publish stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          cat > notes.md <<'EOF'
+          ## SGP Client 1.8.0
+
+          Stable release promoted from owner-runtime-PASS **1.8.0-test.1**.
+
+          - Same tested payload/action set as test.1.
+          - Adds SGP_Create_Chipped_Cutting_MC1.21.1.zip through Paxi.
+          - **6,968** Create Mechanical Saw cutting recipes across **277** Chipped 4.0.2 workbench families.
+          - Generated from exact Chipped 4.0.2 NeoForge data for Minecraft 1.21.1.
+          - Cumulative direct update from every accepted stable **1.0.0–1.7.1**.
+          - Forward repair from historical **1.7.0-test.1 … test.16** and runtime-tested **1.8.0-test.1**.
+          - No worldgen or ticking logic.
+
+          Minecraft 1.21.1 · NeoForge 21.1.249 · Java 21
+          EOF
+          gh release create "$TAG" "$ASSET" --repo "$REPO" --target "${{ github.sha }}" --title "SGP Client 1.8.0" --notes-file notes.md
+          echo "$SHA" > expected.sha
+
+      - name: Verify live stable asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "false"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.8.0"
+              assert p["toVersion"]=="1.8.0"
+              assert p["fromVersions"][-1]=="1.8.0-test.1"
+              assert "1.7.1" in p["fromVersions"]
+              assert "1.5.4" not in p["fromVersions"]
+              assert any(a.get("actionId")=="install-sgp-create-chipped-cutting" for a in p["actions"])
+              for a in p["actions"]:
+                  if a["type"]=="copy":
+                      b=z.read(a["source"])
+                      assert len(b)==a["size"]
+                      assert hashlib.sha256(b).hexdigest().lower()==a["sha256"].lower()
+          print("LIVE_STABLE_180_VERIFY_PASS")
+          PY
+          gh api "repos/$REPO/releases/tags/$TEST_TAG" >/dev/null
+          echo "CURRENT_SUCCESSFUL_TEST_RETAINED"
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
