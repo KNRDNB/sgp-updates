@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import sgp.shapelessportals.PortalFrameRules;
 import sgp.shapelessportals.util.HashSetQueue;
 
 @Mixin(PortalShape.class)
@@ -72,7 +73,7 @@ public abstract class PortalShapeMixin {
 
             BlockState state = this.level.getBlockState(pos);
             boolean interior = PortalShapeAccessor.sgp$isEmpty(state);
-            boolean frame = FRAME.test(state, this.level, pos) || state.is(Blocks.CRYING_OBSIDIAN);
+            boolean frame = FRAME.test(state, this.level, pos) || PortalFrameRules.isPortalFrame(state, this.level, pos);
 
             if (!interior && !frame) {
                 return;
