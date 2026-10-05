@@ -1,0 +1,80 @@
+name: Validate SGP portal mod 1.1.2 TEST3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "release-staging/1.9.1-test.3/portalmod/**"
+      - ".github/workflows/validate-sgp-portal-1.1.2.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build exact TEST3 portal mod
+        run: gradle -p release-staging/1.9.1-test.3/portalmod build --no-daemon --stacktrace
+      - name: Verify exact Minecraft and NeoForge targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='release-staging/1.9.1-test.3/portalmod'
+          CP="$(gradle -q -p "$P" printRuntimeClasspath --no-daemon | tail -n 1)"
+          javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.BaseFireBlock > basefire.txt
+          javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.NetherPortalBlock > netherportal.txt
+          javap -classpath "$CP" -p -s net.minecraft.world.level.portal.PortalShape > portalshape.txt
+          grep -A2 -F 'private static boolean isPortal(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.core.Direction);' basefire.txt | grep -Fq 'descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z'
+          grep -Fq 'BlockState.isPortalFrame' basefire.txt
+          grep -Fq 'PortalShape.findEmptyPortalShape' basefire.txt
+          grep -A2 -F 'protected void randomTick(net.minecraft.world.level.block.state.BlockState, net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);' netherportal.txt | grep -Fq 'descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)V'
+          grep -Fq 'EntityType.ZOMBIFIED_PIGLIN' netherportal.txt
+          grep -Fq 'EntityType.spawn' netherportal.txt
+          grep -Fq 'public net.minecraft.world.level.portal.PortalShape(net.minecraft.world.level.LevelAccessor, net.minecraft.core.BlockPos, net.minecraft.core.Direction$Axis);' portalshape.txt
+          grep -A2 -F 'public boolean isValid();' portalshape.txt | grep -Fq 'descriptor: ()Z'
+          grep -A2 -F 'public boolean isComplete();' portalshape.txt | grep -Fq 'descriptor: ()Z'
+          grep -A2 -F 'public void createPortalBlocks();' portalshape.txt | grep -Fq 'descriptor: ()V'
+      - name: Verify final JAR frame contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR='release-staging/1.9.1-test.3/portalmod/build/libs/SGP-Shapeless-Nether-Portals-1.1.2.jar'
+          test -f "$JAR"
+          unzip -t "$JAR" >/dev/null
+          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -Fq 'version="1.1.2"'
+          unzip -l "$JAR" > jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/PortalFrameRules.class' jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/BaseFireBlockMixin.class' jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/PortalShapeMixin.class' jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/NetherPortalBlockMixin.class' jarfiles.txt
+          grep -Fq 'data/c/tags/block/nether_pframe.json' jarfiles.txt
+          unzip -p "$JAR" data/c/tags/block/nether_pframe.json > frame-tag.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('frame-tag.json',encoding='utf-8'))
+          assert p['replace'] is False
+          assert p['values']==[
+            'minecraft:crying_obsidian',
+            'betternether:weeping_obsidian',
+            'betternether:blue_crying_obsidian',
+            'betternether:blue_weeping_obsidian',
+          ]
+          print('PORTAL_FRAME_TAG_EXACT_PASS')
+          PY
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.PortalFrameRules > rules.txt
+          grep -Fq 'nether_pframe' rules.txt
+          grep -Fq 'isPortalFrame' rules.txt
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.BaseFireBlockMixin > firemixin.txt
+          grep -Fq 'PortalFrameRules.isPortalFrame' firemixin.txt
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.PortalShapeMixin > shapemixin.txt
+          grep -Fq 'PortalFrameRules.isPortalFrame' shapemixin.txt
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.NetherPortalBlockMixin > piglinmixin.txt
+          grep -Fq 'ZOMBIFIED_PIGLIN' piglinmixin.txt
+          grep -Fq 'EntityType.spawn' piglinmixin.txt
+          echo PORTALMOD_112_TEST3_STATIC_VALIDATION_PASS
