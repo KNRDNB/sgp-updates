@@ -1,0 +1,38 @@
+name: Publish SGP Client 1.8.1-test.2 JEI hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.8.1-test.2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build and audit cumulative TEST
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/1.8.1-test.2/ci_build_test2.sh
+      - name: Publish and live-verify prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/1.8.1-test.2/ci_publish_test2.sh
+      - name: Upload matching server candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ServerPatch_1.2.1_CANDIDATE_DO_NOT_HANDOFF_BEFORE_CLIENT_PASS
+          path: SGP_ServerPatch_1.2.1.zip
+          retention-days: 14
+          if-no-files-found: error
