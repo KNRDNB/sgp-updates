@@ -1,0 +1,167 @@
+name: Publish SGP Client 1.8.0-test.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.8.0-test.1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAG: v1.8.0-test.1
+      ASSET: SGP_ClientPatch_1.8.0-test.1.zip
+      BASE_TAG: v1.7.1
+      BASE_ASSET: SGP_ClientPatch_1.7.1.zip
+      BASE_SHA: 999397411a293407057507d83039b070212574dfcb87fd370489cbecd54f3325
+      CHIPPED_VERSION_ID: eqVowbGc
+      CHIPPED_FILE: chipped-neoforge-1.21.1-4.0.2.jar
+      DATAPACK: SGP_Create_Chipped_Cutting_MC1.21.1.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact accepted base and Chipped 4.0.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release already exists" >&2
+            exit 1
+          fi
+
+          gh release download "$BASE_TAG" --repo "$REPO" -p "$BASE_ASSET"
+          echo "$BASE_SHA  $BASE_ASSET" | sha256sum -c -
+          unzip -t "$BASE_ASSET" >/dev/null
+
+          curl -fsSL --retry 3 -A "SGP-PatchBuilder/1.0" \
+            "https://api.modrinth.com/v2/version/$CHIPPED_VERSION_ID" \
+            -o chipped-version.json
+
+          test "$(jq -r '.id' chipped-version.json)" = "$CHIPPED_VERSION_ID"
+          test "$(jq -r '.version_number' chipped-version.json)" = "4.0.2"
+          test "$(jq -r '.loaders | index("neoforge") != null' chipped-version.json)" = "true"
+          test "$(jq -r '.game_versions | index("1.21.1") != null' chipped-version.json)" = "true"
+
+          CHIPPED_URL="$(jq -r --arg f "$CHIPPED_FILE" '.files[] | select(.filename==$f) | .url' chipped-version.json)"
+          test -n "$CHIPPED_URL" && test "$CHIPPED_URL" != "null"
+          curl -fL --retry 3 -A "SGP-PatchBuilder/1.0" -o "$CHIPPED_FILE" "$CHIPPED_URL"
+          unzip -t "$CHIPPED_FILE" >/dev/null
+
+      - name: Build datapack and cumulative TEST patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.8.0-test.1/build_test1.py
+          sha256sum "$DATAPACK" | tee datapack.sha256
+          sha256sum "$ASSET" | tee candidate.sha256
+          echo "FAMILIES=$(cat test1_family_count.txt)"
+          echo "RECIPES=$(cat test1_recipe_count.txt)"
+          echo "DATAPACK_SHA=$(cat test1_datapack_sha.txt)"
+          echo "DATAPACK_SIZE=$(cat test1_datapack_size.txt)"
+          echo "CHIPPED_SHA=$(cat test1_chipped_sha.txt)"
+
+      - name: Publish prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          FAMILIES="$(cat test1_family_count.txt)"
+          RECIPES="$(cat test1_recipe_count.txt)"
+          DP_SHA="$(cat test1_datapack_sha.txt)"
+          DP_SIZE="$(cat test1_datapack_size.txt)"
+          CHIPPED_SHA="$(cat test1_chipped_sha.txt)"
+
+          cat > notes.md <<EOF
+          ## SGP Client 1.8.0-test.1
+
+          TEST: Create × Chipped Mechanical Saw automation.
+
+          - Adds `SGP_Create_Chipped_Cutting_MC1.21.1.zip` through Paxi.
+          - Generated from exact Chipped **4.0.2 NeoForge / Minecraft 1.21.1** workbench recipes and item tags.
+          - Current coverage: **$RECIPES** `create:cutting` recipes across **$FAMILIES** Chipped workbench families.
+          - Any member of a Chipped family can be cut into one exact Chipped variant; use the Mechanical Saw filter to select the desired output for automation.
+          - Uses Minecraft 1.21.1 / NeoForge syntax: singular `recipe/`, `neoforge:conditions`, `processing_time`, result `id`.
+          - No worldgen or ticking logic. Expected overhead is limited to datapack reload/startup and JEI recipe indexing.
+          - Cumulative from every accepted stable **1.0.0–1.7.1**; forward-repair support for retained historical `1.7.0-test.1…test.16` is preserved.
+
+          Chipped JAR SHA-256: `$CHIPPED_SHA`  
+          Datapack SHA-256: `$DP_SHA`  
+          Datapack size: `$DP_SIZE` bytes
+
+          Minecraft 1.21.1 · NeoForge 21.1.249 · Java 21
+          EOF
+
+          gh release create "$TAG" "$ASSET" --repo "$REPO" --target "${{ github.sha }}" \
+            --title "SGP Client 1.8.0-test.1" --notes-file notes.md --prerelease
+          echo "$SHA" > expected.sha
+
+      - name: Verify live prerelease asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          DP_SHA="$(cat test1_datapack_sha.txt)"
+          DP_SIZE="$(cat test1_datapack_size.txt)"
+          FAMILIES="$(cat test1_family_count.txt)"
+          RECIPES="$(cat test1_recipe_count.txt)"
+
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "true"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+
+          python3 - "$DP_SHA" "$DP_SIZE" "$FAMILIES" "$RECIPES" <<'PY'
+          import hashlib, io, json, sys, zipfile
+          dp_sha=sys.argv[1]
+          dp_size=int(sys.argv[2])
+          family_count=int(sys.argv[3])
+          recipe_count=int(sys.argv[4])
+          source="files/config/paxi/datapacks/SGP_Create_Chipped_Cutting_MC1.21.1.zip"
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.8.0-test.1"
+              assert p["toVersion"]=="1.8.0-test.1"
+              assert "1.0.0" in p["fromVersions"] and "1.7.1" in p["fromVersions"]
+              assert "1.5.4" not in p["fromVersions"]
+              assert any(a.get("actionId")=="install-sgp-create-chipped-cutting" for a in p["actions"])
+              dp=z.read(source)
+              assert len(dp)==dp_size
+              assert hashlib.sha256(dp).hexdigest()==dp_sha
+          with zipfile.ZipFile(io.BytesIO(dp)) as dz:
+              assert dz.testzip() is None
+              meta=json.loads(dz.read("pack.mcmeta"))
+              assert meta["pack"]["pack_format"]==48
+              recipes=[n for n in dz.namelist() if n.startswith("data/sgp_create_chipped_cutting/recipe/") and n.endswith(".json")]
+              assert len(recipes)==recipe_count
+              assert not any("/recipes/" in n for n in dz.namelist())
+              families=set()
+              for n in recipes:
+                  r=json.loads(dz.read(n))
+                  assert r["type"]=="create:cutting"
+                  assert r["processing_time"]==50 and "processingTime" not in r
+                  assert r["results"][0]["id"].startswith("chipped:") and "item" not in r["results"][0]
+                  families.add(r["ingredients"][0]["tag"])
+              assert len(families)==family_count
+          print("LIVE_CLIENT_180_TEST1_VERIFY_PASS")
+          PY
+
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
