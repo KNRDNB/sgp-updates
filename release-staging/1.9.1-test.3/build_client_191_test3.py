@@ -70,9 +70,10 @@ assert "1.5.4" not in p["fromVersions"]
 p["summary"]=[
  "TEST.3: SGP Shapeless Nether Portals 1.1.2.",
  "Arbitrary enclosed vertical Nether portal shapes are supported.",
- "Regular obsidian and crying obsidian are both valid frame materials, including mixed frames and the ignition path.",
- "Only the exact vanilla zombified-piglin EntityType.spawn call inside NetherPortalBlock.randomTick is suppressed; the rest of randomTick remains available to other mod injections.",
- "Forward repair removes retired portal mod 1.0.0 and superseded TEST mod 1.1.0 before installing 1.1.1."
+ "Ignition and arbitrary-shape scanning now use one shared portal-frame rule plus c:nether_pframe.",
+ "Frame additions: minecraft:crying_obsidian, betternether:weeping_obsidian, betternether:blue_crying_obsidian and betternether:blue_weeping_obsidian.",
+ "Only the exact vanilla zombified-piglin EntityType.spawn call inside NetherPortalBlock.randomTick is suppressed.",
+ "Forward repair removes portal mod 1.0.0, 1.1.0 and failed 1.1.1 before installing 1.1.2."
 ]
 
 p["actions"] += [
@@ -91,9 +92,16 @@ p["actions"] += [
     "optional":True
   },
   {
-    "actionId":"install-sgp-shapeless-nether-portals-1-1-1",
+    "actionId":"remove-sgp-shapeless-nether-portals-1-1-1",
+    "type":"delete",
+    "description":"Удалить failed SGP Shapeless Nether Portals 1.1.1, если он установлен",
+    "target":OLD_MOD_111,
+    "optional":True
+  },
+  {
+    "actionId":"install-sgp-shapeless-nether-portals-1-1-2",
     "type":"copy",
-    "description":"Установить SGP Shapeless Nether Portals 1.1.1",
+    "description":"Установить SGP Shapeless Nether Portals 1.1.2",
     "source":MOD_SOURCE,
     "target":MOD_TARGET,
     "sha256":mod_sha,
@@ -105,7 +113,8 @@ ids=[a["actionId"] for a in p["actions"]]
 assert len(ids)==len(set(ids))
 assert sum(a.get("actionId")=="remove-sgp-shapeless-nether-portals-1-0-0" for a in p["actions"])==1
 assert sum(a.get("actionId")=="remove-sgp-shapeless-nether-portals-1-1-0" for a in p["actions"])==1
-assert sum(a.get("actionId")=="install-sgp-shapeless-nether-portals-1-1-1" for a in p["actions"])==1
+assert sum(a.get("actionId")=="remove-sgp-shapeless-nether-portals-1-1-1" for a in p["actions"])==1
+assert sum(a.get("actionId")=="install-sgp-shapeless-nether-portals-1-1-2" for a in p["actions"])==1
 
 for a in p["actions"]:
     if a["type"]=="copy":
