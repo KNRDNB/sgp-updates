@@ -36,6 +36,23 @@ jobs:
           grep -Fq 'private final net.minecraft.core.Direction$Axis axis;' portalshape.txt
           grep -Fq 'private final net.minecraft.core.Direction rightDir;' portalshape.txt
           grep -Fq 'private static final net.minecraft.world.level.block.state.BlockBehaviour$StatePredicate FRAME;' portalshape.txt
+      - name: Inspect exact ignition and portal-spawn methods
+        shell: bash
+        run: |
+          set -euo pipefail
+          CP="$(gradle -q -p release-staging/1.9.0/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
+          javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.BaseFireBlock > basefire.txt
+          javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.NetherPortalBlock > netherportalblock.txt
+      - name: Upload exact javap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-class-javap-1.21.1
+          path: |
+            portalshape.txt
+            basefire.txt
+            netherportalblock.txt
+          retention-days: 7
       - name: Verify final JAR
         shell: bash
         run: |
