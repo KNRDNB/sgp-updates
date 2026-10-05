@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:crying_obsidian",
+    "betternether:weeping_obsidian",
+    "betternether:blue_crying_obsidian",
+    "betternether:blue_weeping_obsidian"
+  ]
+}
