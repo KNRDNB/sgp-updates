@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "release-staging/1.9.1-test.1/portalmod/**"
+      - "release-staging/1.9.1-test.2/portalmod/**"
       - ".github/workflows/validate-sgp-shapeless-portals.yml"
 
 jobs:
@@ -20,12 +20,12 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Build portal mod
-        run: gradle -p release-staging/1.9.1-test.1/portalmod build --no-daemon --stacktrace
+        run: gradle -p release-staging/1.9.1-test.2/portalmod build --no-daemon --stacktrace
       - name: Verify exact Minecraft target descriptors
         shell: bash
         run: |
           set -euo pipefail
-          CP="$(gradle -q -p release-staging/1.9.1-test.1/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
+          CP="$(gradle -q -p release-staging/1.9.1-test.2/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
           javap -classpath "$CP" -p -s net.minecraft.world.level.portal.PortalShape > portalshape.txt
           grep -Fq 'public net.minecraft.world.level.portal.PortalShape(net.minecraft.world.level.LevelAccessor, net.minecraft.core.BlockPos, net.minecraft.core.Direction$Axis);' portalshape.txt
           grep -A2 -F 'public boolean isValid();' portalshape.txt | grep -Fq 'descriptor: ()Z'
@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CP="$(gradle -q -p release-staging/1.9.1-test.1/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
+          CP="$(gradle -q -p release-staging/1.9.1-test.2/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
           javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.BaseFireBlock > basefire.txt
           javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.NetherPortalBlock > netherportalblock.txt
           javap -classpath "$CP" -p -c -s 'net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase' > blockstatebase.txt
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          JAR='release-staging/1.9.1-test.1/portalmod/build/libs/SGP-Shapeless-Nether-Portals-1.1.0.jar'
+          JAR='release-staging/1.9.1-test.2/portalmod/build/libs/SGP-Shapeless-Nether-Portals-1.1.1.jar'
           test -f "$JAR"
           unzip -t "$JAR" >/dev/null
           unzip -l "$JAR" > jarfiles.txt
@@ -88,7 +88,7 @@ jobs:
           grep -Fq 'randomTick' netherportal-mixin.txt
           grep -Fq 'ZOMBIFIED_PIGLIN' netherportal-mixin.txt
           grep -Fq 'EntityType.spawn' netherportal-mixin.txt
-          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -Fq 'version="1.1.0"'
+          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -Fq 'version="1.1.1"'
           unzip -p "$JAR" sgp_shapeless_nether_portals.mixins.json | grep -Fq 'BaseFireBlockMixin'
           unzip -p "$JAR" sgp_shapeless_nether_portals.mixins.json | grep -Fq 'NetherPortalBlockMixin'
-          echo PORTALMOD_110_STATIC_VALIDATION_PASS
+          echo PORTALMOD_111_STATIC_VALIDATION_PASS
