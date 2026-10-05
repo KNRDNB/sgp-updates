@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "sgp.shapelessportals.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "PortalShapeAccessor",
+    "PortalShapeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
