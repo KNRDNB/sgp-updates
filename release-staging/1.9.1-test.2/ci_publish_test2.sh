@@ -109,7 +109,7 @@ grep -Fq 'EntityType.spawn' netherportal-mixin.txt
 echo PORTALMOD_111_FINAL_PREFLIGHT_PASS
 
 python3 release-staging/1.9.1-test.2/build_client_191_test2.py | tee client-build.txt
-python3 release-staging/1.9.1-test.2/build_server_131.py | tee server-build.txt
+python3 release-staging/1.9.1-test.2/build_server_132.py | tee server-build.txt
 
 python3 - <<'PY'
 import hashlib, json, zipfile
@@ -144,7 +144,7 @@ with zipfile.ZipFile('SGP_ClientPatch_1.9.1-test.2.zip') as z:
     assert len(b)==mod['size']
     assert hashlib.sha256(b).hexdigest()==mod['sha256']
 
-with zipfile.ZipFile('SGP_ServerPatch_1.3.1.zip') as z:
+with zipfile.ZipFile('SGP_ServerPatch_1.3.2.zip') as z:
     assert z.testzip() is None
     assert sorted(z.namelist())==sorted([
       '.sgp/pack.json','.sgp/history.json',
@@ -153,17 +153,17 @@ with zipfile.ZipFile('SGP_ServerPatch_1.3.1.zip') as z:
       'mods/SGP-Apotheosis-Soulbound-Compat-1.0.0.jar',
       'mods/SGP-Shapeless-Nether-Portals-1.1.1.jar'
     ])
-    assert json.loads(z.read('.sgp/pack.json'))['version']=='1.3.1'
+    assert json.loads(z.read('.sgp/pack.json'))['version']=='1.3.2'
     h=json.loads(z.read('.sgp/history.json'))
-    assert h['currentVersion']=='1.3.1'
-    assert [e['version'] for e in h['entries']]==['1.0.0','1.2.0','1.2.1','1.3.1']
+    assert h['currentVersion']=='1.3.2'
+    assert [e['version'] for e in h['entries']]==['1.0.0','1.2.0','1.2.1','1.3.2']
 print('TEST191_TEST2_EXACT_PACKAGE_AUDIT_PASS')
 PY
 
 SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
 MOD_SHA="$(cat portal_mod_sha.txt)"
 MOD_SIZE="$(cat portal_mod_size.txt)"
-SERVER_SHA="$(cat server131_sha.txt)"
+SERVER_SHA="$(cat server132_sha.txt)"
 
 {
   echo '## SGP Client 1.9.1-test.2'
@@ -175,11 +175,11 @@ SERVER_SHA="$(cat server131_sha.txt)"
   echo '- Suppresses only the exact vanilla zombified-piglin spawn call from NetherPortalBlock.randomTick.'
   echo '- Keeps vanilla nether_portal blocks, travel and portal linking.'
   echo '- Forward-repairs deleted 1.9.0 and superseded 1.9.1-test.1 by deleting portal mods 1.0.0/1.1.0.'
-  echo '- Matching server 1.3.1 is CI evidence only and is NOT handed off until owner client runtime PASS.'
+  echo '- Matching server 1.3.2 is CI evidence only and is NOT handed off until owner client runtime PASS.'
   echo
   printf 'Portal mod 1.1.1 SHA-256: %s (%s bytes)\n' "$MOD_SHA" "$MOD_SIZE"
   printf 'Client TEST SHA-256: %s\n' "$SHA"
-  printf 'Withheld server 1.3.1 SHA-256: %s\n' "$SERVER_SHA"
+  printf 'Withheld server 1.3.2 SHA-256: %s\n' "$SERVER_SHA"
 } > notes.md
 
 gh release create "$TAG" "$ASSET" --repo "$REPO" --target "$GITHUB_SHA" \
