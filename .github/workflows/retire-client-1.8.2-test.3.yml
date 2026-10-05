@@ -1,0 +1,29 @@
+name: Retire failed SGP Client 1.8.2-test.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/retire-client-1.8.2-test.3.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete failed TEST release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO='${{ github.repository }}'
+          TAG='v1.8.2-test.3'
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$REPO" --cleanup-tag -y
+          fi
+          ! gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1
+          ! gh api "repos/$REPO/git/ref/tags/$TAG" >/dev/null 2>&1
+          echo FAILED_TEST3_RETIRED_PASS
