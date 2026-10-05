@@ -4,6 +4,8 @@
   "package": "sgp.shapelessportals.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BaseFireBlockMixin",
+    "NetherPortalBlockMixin",
     "PortalShapeAccessor",
     "PortalShapeMixin"
   ],
