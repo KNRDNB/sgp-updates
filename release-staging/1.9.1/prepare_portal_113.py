@@ -10,6 +10,11 @@ if OUT.exists():
     shutil.rmtree(OUT)
 shutil.copytree(SRC, OUT)
 
+# Historical 1.9.0 staging accumulated a later BaseFire mixin; stable 1.1.3 must not compile/package it.
+stale_basefire=OUT/"src/main/java/sgp/shapelessportals/mixin/BaseFireBlockMixin.java"
+if stale_basefire.exists():
+    stale_basefire.unlink()
+
 # Start from the proven base-obsidian arbitrary-shape implementation (1.0.0)
 # and add only the narrow portal-generated zombified-piglin suppression
 # already present in 1.1.1/1.1.2.
