@@ -1,0 +1,105 @@
+name: Publish SGP Client 1.7.1 stable v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.7.1-v2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      BASE_TAG: v1.7.0
+      BASE_ASSET: SGP_ClientPatch_1.7.0.zip
+      BASE_SHA: 95e649ccb3ad53ac5e21584e31a010907d245a4c6d1572eaf281fc8ef8234377
+      FARM_FILE: letsdo-farm_and_charm-neoforge-1.1.26.jar
+      FARM_SHA: a148e4d1778d52819d2a4574ba9ccc3f39b7eefb0ace86fbe4121057ee7d1eca
+      FARM_SIZE: 2664623
+      TAG: v1.7.1
+      ASSET: SGP_ClientPatch_1.7.1.zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download base and exact Farm Charm
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "Release already exists" >&2
+            exit 1
+          fi
+          gh release download "$BASE_TAG" --repo "$REPO" -p "$BASE_ASSET"
+          echo "$BASE_SHA  $BASE_ASSET" | sha256sum -c -
+          curl -L --fail --retry 3 -A "Mozilla/5.0" -o "$FARM_FILE" "https://edge.forgecdn.net/files/8967/051/$FARM_FILE"
+          test "$(stat -c%s "$FARM_FILE")" = "$FARM_SIZE"
+          echo "$FARM_SHA  $FARM_FILE" | sha256sum -c -
+          unzip -t "$FARM_FILE" >/dev/null
+
+      - name: Build and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release-staging/1.7.1/build_stable171.py
+          sha256sum "$ASSET" | tee stable.sha256
+
+      - name: Publish stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
+          cat > notes.md <<'EOF'
+          ## SGP Client 1.7.1
+
+          Direct stable maintenance release by explicit owner exception; normal TEST prerelease is skipped for this release.
+
+          - Cumulative from every accepted stable 1.0.0–1.7.0.
+          - Forward repair from retained 1.7.0-test.1 … test.16.
+          - [Let's Do] Farm & Charm updated to 1.1.26 NeoForge 1.21.1.
+          - Fixes the Silo conflict where cultivated Wheat/Barley/Corn/Oat Bone Meal drying recipes could silently win over Brewery drying recipes.
+          - Brewery unchanged; no other payload/config changes relative to 1.7.0.
+          - Matching server archive intentionally not produced for this exception; owner updates Farm & Charm manually on the server.
+
+          Minecraft 1.21.1 · NeoForge 21.1.249 · Java 21
+          EOF
+          gh release create "$TAG" "$ASSET" --repo "$REPO" --target "${{ github.sha }}" --title "SGP Client 1.7.1" --notes-file notes.md
+          echo "$SHA" > expected.sha
+
+      - name: Verify live asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(cat expected.sha)"
+          REL="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$REL" | jq -r '.draft')" = "false"
+          test "$(printf '%s' "$REL" | jq -r '.prerelease')" = "false"
+          RID="$(printf '%s' "$REL" | jq -r '.id')"
+          ASSETS="$(gh api "repos/$REPO/releases/$RID/assets")"
+          test "$(printf '%s' "$ASSETS" | jq 'length')" = "1"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].name')" = "$ASSET"
+          AID="$(printf '%s' "$ASSETS" | jq -r '.[0].id')"
+          test "$(printf '%s' "$ASSETS" | jq -r '.[0].digest')" = "sha256:$EXPECTED"
+          gh api -H "Accept: application/octet-stream" "repos/$REPO/releases/assets/$AID" > verify.zip
+          echo "$EXPECTED  verify.zip" | sha256sum -c -
+          unzip -t verify.zip >/dev/null
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          with zipfile.ZipFile("verify.zip") as z:
+              p=json.loads(z.read("patch.json"))
+              assert p["patchId"]=="sgp-client-1.7.1"
+              assert p["toVersion"]=="1.7.1"
+              assert "1.7.0" in p["fromVersions"]
+              b=z.read("files/mods/letsdo-farm_and_charm-neoforge-1.1.26.jar")
+              assert len(b)==2664623
+              assert hashlib.sha256(b).hexdigest()=="a148e4d1778d52819d2a4574ba9ccc3f39b7eefb0ace86fbe4121057ee7d1eca"
+          print("LIVE_STABLE_171_VERIFY_PASS")
+          PY
+          echo "PUBLISHED_RELEASE_ID=$RID"
+          echo "PUBLISHED_ASSET_ID=$AID"
+          echo "PUBLISHED_SHA=$EXPECTED"
