@@ -1,0 +1,27 @@
+name: Publish SGP Client 1.8.2-test.4 Curios config fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.8.2-test.4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, audit, publish and live-verify TEST
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/1.8.2-test.4/ci_publish_test4.sh
+      - name: Upload matching server candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ServerPatch_1.2.2_CANDIDATE_DO_NOT_HANDOFF_BEFORE_CLIENT_PASS
+          path: SGP_ServerPatch_1.2.2.zip
+          retention-days: 14
+          if-no-files-found: error
