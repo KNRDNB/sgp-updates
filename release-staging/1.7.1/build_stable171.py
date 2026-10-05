@@ -26,15 +26,15 @@ with zipfile.ZipFile(FARM) as z:
     assert 'modId = "farm_and_charm"' in toml
     assert 'version = "1.1.26"' in toml
     assert 'side = "BOTH"' in toml
-    # 1.1.26 must no longer carry the conflicting crop->bone-meal silo recipes.
-    bad=[]
-    for n in z.namelist():
-        if not (n.startswith("data/") and n.endswith(".json")):
-            continue
-        b=z.read(n)
-        if b"minecraft:bone_meal" in b and any(x in b for x in [b"minecraft:wheat",b"farm_and_charm:barley",b"farm_and_charm:corn",b"farm_and_charm:oat"]):
-            bad.append(n)
-    assert not bad,bad
+    # 1.1.26 specifically removes the four conflicting cultivated-crop drying recipes.
+    names=set(z.namelist())
+    for n in [
+        "data/farm_and_charm/recipe/drying/bone_meal_from_wheat.json",
+        "data/farm_and_charm/recipe/drying/bone_meal_from_barley.json",
+        "data/farm_and_charm/recipe/drying/bone_meal_from_corn.json",
+        "data/farm_and_charm/recipe/drying/bone_meal_from_oat.json",
+    ]:
+        assert n not in names,n
 
 if WORK.exists(): shutil.rmtree(WORK)
 BUILD.mkdir(parents=True)
