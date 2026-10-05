@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="sgp_apotheosis_soulbound_compat"
+version="1.0.0"
+displayName="SGP Apotheosis Soulbound Compat"
+authors="SGP"
+description='''Allows Soulbound on Apotheosis Potion Charms without enabling unrelated enchantments.'''
+
+[[mixins]]
+config="sgp_apotheosis_soulbound_compat.mixins.json"
+
+[[dependencies.sgp_apotheosis_soulbound_compat]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.249,21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_apotheosis_soulbound_compat]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_apotheosis_soulbound_compat]]
+modId="apotheosis"
+type="required"
+versionRange="[8.8.0,8.9.0)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.sgp_apotheosis_soulbound_compat]]
+modId="soulbound"
+type="required"
+versionRange="[1.0.1,1.0.2)"
+ordering="AFTER"
+side="BOTH"
