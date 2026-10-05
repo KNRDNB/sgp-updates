@@ -43,6 +43,7 @@ jobs:
           CP="$(gradle -q -p release-staging/1.9.0/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
           javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.BaseFireBlock > basefire.txt
           javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.NetherPortalBlock > netherportalblock.txt
+          javap -classpath "$CP" -p -c -s 'net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase' > blockstatebase.txt
       - name: Upload exact javap evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,6 +53,7 @@ jobs:
             portalshape.txt
             basefire.txt
             netherportalblock.txt
+            blockstatebase.txt
           retention-days: 7
       - name: Verify final JAR
         shell: bash
