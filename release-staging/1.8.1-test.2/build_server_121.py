@@ -1,0 +1,92 @@
+import hashlib, json, shutil, zipfile
+from pathlib import Path
+
+ROOT=Path.cwd()
+MOD=ROOT/"SGP-Create-Chipped-Cutting-1.0.1.jar"
+OUT=ROOT/"SGP_ServerPatch_1.2.1.zip"
+WORK=ROOT/".work-server-121-test2"
+BUILD=WORK/"server-root"
+
+def shaf(p):
+    return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+assert MOD.is_file()
+mod_sha=shaf(MOD)
+mod_size=MOD.stat().st_size
+
+if WORK.exists(): shutil.rmtree(WORK)
+(BUILD/"mods").mkdir(parents=True)
+shutil.copyfile(MOD,BUILD/"mods/SGP-Create-Chipped-Cutting-1.0.1.jar")
+
+pack={
+ "schemaVersion":1,
+ "packId":"sgp-neoforge-1.21.1-server",
+ "familyId":"sgp-neoforge-1.21.1",
+ "displayName":"SGP Minecraft 1.21.1 (Server)",
+ "side":"server",
+ "version":"1.2.1",
+ "versionFormat":"semver",
+ "minecraft":"1.21.1",
+ "loader":"neoforge",
+ "neoforge":"21.1.249",
+ "javaMajor":21,
+ "releaseChannel":"stable",
+ "baseline":False,
+ "stateSchemaVersion":1,
+ "lastUpdate":{"id":"sgp-server-1.2.1","type":"release","version":"1.2.1","releaseDate":"2026-10-05"}
+}
+history={
+ "schemaVersion":1,
+ "packId":"sgp-neoforge-1.21.1-server",
+ "currentVersion":"1.2.1",
+ "versionFormat":"semver",
+ "entries":[
+  {"id":"sgp-baseline-1.0.0","type":"baseline","version":"1.0.0","releaseDate":"2026-09-22","installer":"manual"},
+  {"id":"sgp-server-1.2.0","type":"release","version":"1.2.0","releaseDate":"2026-10-05","installer":"manual"},
+  {"id":"sgp-server-1.2.1","type":"release","version":"1.2.1","releaseDate":"2026-10-05","installer":"manual"}
+ ]
+}
+sgp=BUILD/".sgp"; sgp.mkdir()
+(sgp/"pack.json").write_text(json.dumps(pack,ensure_ascii=False,indent=2)+"\n","utf-8")
+(sgp/"history.json").write_text(json.dumps(history,ensure_ascii=False,indent=2)+"\n","utf-8")
+
+expected=sorted([
+ ".sgp/history.json",
+ ".sgp/pack.json",
+ "mods/SGP-Create-Chipped-Cutting-1.0.1.jar"
+])
+files=sorted(p for p in BUILD.rglob("*") if p.is_file())
+assert [p.relative_to(BUILD).as_posix() for p in files]==expected
+
+fixed=(2026,10,5,15,30,0)
+with zipfile.ZipFile(OUT,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+    for f in files:
+        arc=f.relative_to(BUILD).as_posix()
+        zi=zipfile.ZipInfo(arc,fixed)
+        zi.compress_type=zipfile.ZIP_DEFLATED
+        zi.external_attr=0o644<<16
+        z.writestr(zi,f.read_bytes(),compress_type=zipfile.ZIP_DEFLATED,compresslevel=9)
+
+with zipfile.ZipFile(OUT) as z:
+    assert z.testzip() is None
+    assert sorted(z.namelist())==expected
+    assert json.loads(z.read(".sgp/pack.json"))["version"]=="1.2.1"
+    h=json.loads(z.read(".sgp/history.json"))
+    assert h["currentVersion"]=="1.2.1"
+    assert [e["version"] for e in h["entries"]]==["1.0.0","1.2.0","1.2.1"]
+    assert "config/paxi/datapacks/SGP_Create_Chipped_Cutting_MC1.21.1.zip" not in z.namelist()
+    assert "mods/SGP-Create-Chipped-Cutting-1.0.0.jar" not in z.namelist()
+
+Path("server121_sha.txt").write_text(shaf(OUT)+"\n","utf-8")
+Path("server121_size.txt").write_text(str(OUT.stat().st_size)+"\n","utf-8")
+Path("server121_pack_sha.txt").write_text(shaf(BUILD/".sgp/pack.json")+"\n","utf-8")
+Path("server121_pack_size.txt").write_text(str((BUILD/".sgp/pack.json").stat().st_size)+"\n","utf-8")
+Path("server121_history_sha.txt").write_text(shaf(BUILD/".sgp/history.json")+"\n","utf-8")
+Path("server121_history_size.txt").write_text(str((BUILD/".sgp/history.json").stat().st_size)+"\n","utf-8")
+print("SERVER_121_TEST2_STATIC_AUDIT_PASS")
+print("DELETE_BEFORE_COPY=config/paxi/datapacks/SGP_Create_Chipped_Cutting_MC1.21.1.zip")
+print("DELETE_IF_PRESENT=mods/SGP-Create-Chipped-Cutting-1.0.0.jar")
+print("SERVER_SHA="+shaf(OUT))
+print("SERVER_SIZE="+str(OUT.stat().st_size))
+print("PACK_SHA="+shaf(BUILD/".sgp/pack.json"))
+print("HISTORY_SHA="+shaf(BUILD/".sgp/history.json"))
