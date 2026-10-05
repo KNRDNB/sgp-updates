@@ -1,0 +1,29 @@
+name: Retire superseded SGP Client 1.9.1-test.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/retire-client-1.9.1-test.1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete superseded TEST release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO='${{ github.repository }}'
+          TAG='v1.9.1-test.1'
+          if gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$REPO" --cleanup-tag -y
+          fi
+          ! gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1
+          ! gh api "repos/$REPO/git/ref/tags/$TAG" >/dev/null 2>&1
+          echo SUPERSEDED_TEST1_RETIRED_PASS
