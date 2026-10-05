@@ -44,6 +44,7 @@ jobs:
           javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.BaseFireBlock > basefire.txt
           javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.NetherPortalBlock > netherportalblock.txt
           javap -classpath "$CP" -p -c -s 'net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase' > blockstatebase.txt
+          javap -classpath "$CP" -p -c -s net.minecraft.world.level.block.state.BlockState > blockstate.txt
       - name: Upload exact javap evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,6 +55,7 @@ jobs:
             basefire.txt
             netherportalblock.txt
             blockstatebase.txt
+            blockstate.txt
           retention-days: 7
       - name: Verify final JAR
         shell: bash
