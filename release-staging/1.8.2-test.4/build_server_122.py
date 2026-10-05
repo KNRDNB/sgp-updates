@@ -31,8 +31,14 @@ with zipfile.ZipFile(CLIENT) as z:
         assert shab(b)==a[0]["sha256"]
         return b
     fixes=payload(FIX_TARGET)
-    cfg=payload(CFG_TARGET)
     mod=payload(MOD_TARGET)
+
+cfg=(
+    "#List of slots to create or modify.\n"
+    "#See documentation for syntax: https://docs.illusivesoulworks.com/curios/configuration#slot-configuration\n"
+    "#\n"
+    'slots = ["id=wings;size=1;order=-100;add_cosmetic=true", "id=quiver;size=1;order=-90;add_cosmetic=true", "id=glasses;size=1;order=-80;add_cosmetic=true", "id=amulet_pocket;size=6;order=-70"]\n'
+).encode("utf-8")
 
 assert shab(mod)==MOD_SHA
 with zipfile.ZipFile(io.BytesIO(fixes)) as dz:
@@ -108,8 +114,12 @@ Path("server122_sha.txt").write_text(shaf(OUT)+"\n","utf-8")
 Path("server122_size.txt").write_text(str(OUT.stat().st_size)+"\n","utf-8")
 Path("server122_pack_sha.txt").write_text(shaf(BUILD/".sgp/pack.json")+"\n","utf-8")
 Path("server122_history_sha.txt").write_text(shaf(BUILD/".sgp/history.json")+"\n","utf-8")
+Path("server122_curios_config_sha.txt").write_text(shab(cfg)+"\n","utf-8")
+Path("server122_curios_config_size.txt").write_text(str(len(cfg))+"\n","utf-8")
 print("SERVER_122_TEST4_STATIC_AUDIT_PASS")
 print("SERVER_SHA="+shaf(OUT))
 print("SERVER_SIZE="+str(OUT.stat().st_size))
 print("PACK_SHA="+shaf(BUILD/".sgp/pack.json"))
 print("HISTORY_SHA="+shaf(BUILD/".sgp/history.json"))
+print("CONFIG_SHA="+shab(cfg))
+print("CONFIG_SIZE="+str(len(cfg)))
