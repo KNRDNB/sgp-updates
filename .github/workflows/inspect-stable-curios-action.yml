@@ -1,0 +1,25 @@
+name: Inspect stable Curios action
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-stable-curios-action.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact stable manifest action
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v1.8.1 --repo KNRDNB/sgp-updates -p SGP_ClientPatch_1.8.1.zip
+          unzip -p SGP_ClientPatch_1.8.1.zip patch.json > patch.json
+          jq '.actions[] | select(.target == "config/curios-common.toml")' patch.json
