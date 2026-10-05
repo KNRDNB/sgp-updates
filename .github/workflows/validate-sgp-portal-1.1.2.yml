@@ -61,9 +61,9 @@ jobs:
           assert p['replace'] is False
           assert p['values']==[
             'minecraft:crying_obsidian',
-            'betternether:weeping_obsidian',
-            'betternether:blue_crying_obsidian',
-            'betternether:blue_weeping_obsidian',
+            {'id':'betternether:weeping_obsidian','required':False},
+            {'id':'betternether:blue_crying_obsidian','required':False},
+            {'id':'betternether:blue_weeping_obsidian','required':False},
           ]
           print('PORTAL_FRAME_TAG_EXACT_PASS')
           PY
