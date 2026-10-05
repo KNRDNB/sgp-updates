@@ -36,6 +36,10 @@ jobs:
           grep -Fq 'private final net.minecraft.core.Direction$Axis axis;' portalshape.txt
           grep -Fq 'private final net.minecraft.core.Direction rightDir;' portalshape.txt
           grep -Fq 'private static final net.minecraft.world.level.block.state.BlockBehaviour$StatePredicate FRAME;' portalshape.txt
+          javap -classpath "$CP" -p -s net.minecraft.world.level.block.BaseFireBlock > basefire-descriptors.txt
+          grep -A2 -F 'private static boolean isPortal(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.core.Direction);' basefire-descriptors.txt | grep -Fq 'descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z'
+          javap -classpath "$CP" -p -s net.minecraft.world.level.block.NetherPortalBlock > netherportal-descriptors.txt
+          grep -A2 -F 'protected void randomTick(net.minecraft.world.level.block.state.BlockState, net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);' netherportal-descriptors.txt | grep -Fq 'descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)V'
       - name: Inspect exact ignition and portal-spawn methods
         shell: bash
         run: |
@@ -61,15 +65,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          JAR='release-staging/1.9.0/portalmod/build/libs/SGP-Shapeless-Nether-Portals-1.0.0.jar'
+          JAR='release-staging/1.9.0/portalmod/build/libs/SGP-Shapeless-Nether-Portals-1.1.0.jar'
           test -f "$JAR"
           unzip -t "$JAR" >/dev/null
           unzip -l "$JAR" > jarfiles.txt
           grep -Fq 'sgp/shapelessportals/mixin/PortalShapeMixin.class' jarfiles.txt
           grep -Fq 'sgp/shapelessportals/mixin/PortalShapeAccessor.class' jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/BaseFireBlockMixin.class' jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/NetherPortalBlockMixin.class' jarfiles.txt
           grep -Fq 'META-INF/NOTICE-NICER-PORTALS.txt' jarfiles.txt
           grep -Fq 'sgp_shapeless_nether_portals.mixins.json' jarfiles.txt
           javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.PortalShapeMixin > mixin.txt
           grep -Fq 'major version: 65' mixin.txt
           grep -Fq 'PortalShape' mixin.txt
-          echo PORTALMOD_STATIC_VALIDATION_PASS
+          grep -Fq 'CRYING_OBSIDIAN' mixin.txt
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.BaseFireBlockMixin > basefire-mixin.txt
+          grep -Fq 'BaseFireBlock' basefire-mixin.txt
+          grep -Fq 'isPortalFrame' basefire-mixin.txt
+          grep -Fq 'CRYING_OBSIDIAN' basefire-mixin.txt
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.NetherPortalBlockMixin > netherportal-mixin.txt
+          grep -Fq 'NetherPortalBlock' netherportal-mixin.txt
+          grep -Fq 'randomTick' netherportal-mixin.txt
+          unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -Fq 'version="1.1.0"'
+          unzip -p "$JAR" sgp_shapeless_nether_portals.mixins.json | grep -Fq 'BaseFireBlockMixin'
+          unzip -p "$JAR" sgp_shapeless_nether_portals.mixins.json | grep -Fq 'NetherPortalBlockMixin'
+          echo PORTALMOD_110_STATIC_VALIDATION_PASS
