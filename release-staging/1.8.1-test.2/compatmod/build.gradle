@@ -41,3 +41,10 @@ dependencies {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+processResources {
+    from(file("../../1.8.1-test.1/compatmod/src/main/resources/META-INF/neoforge.mods.toml")) {
+        into "META-INF"
+        filter { line -> line.replace('version="1.0.0"', 'version="1.0.1"') }
+    }
+}
