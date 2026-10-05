@@ -1,0 +1,58 @@
+name: Inspect current BetterNether portal data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-current-betternether.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download accepted client and inspect BetterNether
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download v1.8.2 --repo KNRDNB/sgp-updates -p SGP_ClientPatch_1.8.2.zip
+          python3 - <<'PY'
+          import io,json,zipfile,hashlib
+          from pathlib import Path
+          z=zipfile.ZipFile('SGP_ClientPatch_1.8.2.zip')
+          p=json.loads(z.read('patch.json'))
+          found=[]
+          for a in p['actions']:
+              if a.get('type')!='copy' or not str(a.get('target','')).endswith('.jar'):
+                  continue
+              try: b=z.read(a['source'])
+              except KeyError: continue
+              try:
+                  with zipfile.ZipFile(io.BytesIO(b)) as j:
+                      names=j.namelist()
+                      if any(n.startswith('assets/betternether/') for n in names):
+                          found.append((a,b,names))
+                          print('BETTERNETHER_TARGET='+a['target'])
+                          print('BETTERNETHER_SHA='+hashlib.sha256(b).hexdigest())
+                          print('BETTERNETHER_SIZE='+str(len(b)))
+                          for n in names:
+                              low=n.lower()
+                              if ('obsidian' in low or 'portal' in low or 'nether_pframe' in low) and (n.startswith('data/') or n.startswith('assets/betternether/lang/') or n.endswith('.class')):
+                                  print('ENTRY='+n)
+                          for lang in ['assets/betternether/lang/ru_ru.json','assets/betternether/lang/en_us.json']:
+                              if lang in names:
+                                  try:
+                                      data=json.loads(j.read(lang))
+                                      for k,v in data.items():
+                                          if 'obsidian' in k.lower() or 'обсидиан' in str(v).lower():
+                                              print(f'LANG {k}={v}')
+                                  except Exception as e: print('LANGERR',lang,e)
+              except zipfile.BadZipFile: pass
+          assert len(found)==1,len(found)
+          print('BETTERNETHER_EXACT_INSPECTION_PASS')
+          PY
