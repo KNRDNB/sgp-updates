@@ -100,7 +100,8 @@ grep -Fq 'CRYING_OBSIDIAN' basefire-mixin.txt
 javap -classpath "$PORTAL_JAR" -p -v sgp.shapelessportals.mixin.NetherPortalBlockMixin > netherportal-mixin.txt
 grep -Fq 'NetherPortalBlock' netherportal-mixin.txt
 grep -Fq 'randomTick' netherportal-mixin.txt
-grep -Fq 'CallbackInfo.cancel' netherportal-mixin.txt || grep -Fq 'cancel:()V' netherportal-mixin.txt
+grep -Fq 'ZOMBIFIED_PIGLIN' netherportal-mixin.txt
+grep -Fq 'EntityType.spawn' netherportal-mixin.txt
 
 echo PORTALMOD_110_FINAL_PREFLIGHT_PASS
 
