@@ -61,11 +61,18 @@ def tag_entry_id(value) -> str:
     raise AssertionError(f"Unsupported tag entry: {value!r}")
 
 
-def recipe_filename(output_id: str) -> Path:
-    ns, path = output_id.split(":", 1)
+def safe_resource_path(resource_id: str) -> Path:
+    ns, path = resource_id.split(":", 1)
     assert ns == "chipped"
     assert path and not path.startswith("/") and ".." not in path.split("/")
-    return Path(*path.split("/")).with_suffix(".json")
+    return Path(*path.split("/"))
+
+
+def recipe_filename(family: str, output_id: str) -> Path:
+    # Chipped 4.0.2 intentionally has a few overlapping exposed workbench tags
+    # (for example lantern + special_lantern). Keep every family->variant route
+    # and make the recipe id unique by nesting under the family path.
+    return safe_resource_path(family) / safe_resource_path(output_id).with_suffix(".json")
 
 
 def verify_modrinth_metadata_and_jar() -> None:
@@ -138,8 +145,8 @@ def build_datapack() -> tuple[int, int, str, int]:
     }
     (DP_BUILD / "pack.mcmeta").write_text(json.dumps(pack, ensure_ascii=False, indent=2) + "\n", "utf-8")
 
-    output_to_family: dict[str, str] = {}
     family_to_outputs: dict[str, list[str]] = {}
+    route_count = 0
 
     with zipfile.ZipFile(CHIPPED) as z:
         family_tags = discover_workbench_family_tags(z)
@@ -162,12 +169,6 @@ def build_datapack() -> tuple[int, int, str, int]:
             family_to_outputs[family] = chipped_outputs
 
             for out_id in chipped_outputs:
-                if out_id in output_to_family:
-                    raise AssertionError(
-                        f"Chipped output belongs to multiple exposed workbench families: "
-                        f"{out_id}: {output_to_family[out_id]} and {family}"
-                    )
-                output_to_family[out_id] = family
                 recipe = {
                     "neoforge:conditions": [
                         {"type": "neoforge:mod_loaded", "modid": "create"},
@@ -178,13 +179,14 @@ def build_datapack() -> tuple[int, int, str, int]:
                     "processing_time": PROCESSING_TIME,
                     "results": [{"count": 1, "id": out_id}],
                 }
-                dst = recipe_root / recipe_filename(out_id)
+                dst = recipe_root / recipe_filename(family, out_id)
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 assert not dst.exists(), dst
                 dst.write_text(json.dumps(recipe, ensure_ascii=False, indent=2) + "\n", "utf-8")
+                route_count += 1
 
     recipe_files = sorted(recipe_root.rglob("*.json"))
-    assert len(recipe_files) == len(output_to_family)
+    assert len(recipe_files) == route_count
     assert len(recipe_files) >= 6000, len(recipe_files)
 
     fixed = (2026, 10, 5, 12, 0, 0)
