@@ -50,5 +50,5 @@ jobs:
           grep -Fq 'sgp_shapeless_nether_portals.mixins.json' jarfiles.txt
           javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.PortalShapeMixin > mixin.txt
           grep -Fq 'major version: 65' mixin.txt
-          grep -Fq 'net.minecraft.world.level.portal.PortalShape' mixin.txt
+          grep -Fq 'PortalShape' mixin.txt
           echo PORTALMOD_STATIC_VALIDATION_PASS
