@@ -1,0 +1,54 @@
+name: Validate SGP Shapeless Nether Portals
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "release-staging/1.9.0/portalmod/**"
+      - ".github/workflows/validate-sgp-shapeless-portals.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build portal mod
+        run: gradle -p release-staging/1.9.0/portalmod build --no-daemon --stacktrace
+      - name: Verify exact Minecraft target descriptors
+        shell: bash
+        run: |
+          set -euo pipefail
+          CP="$(gradle -q -p release-staging/1.9.0/portalmod printRuntimeClasspath --no-daemon | tail -n 1)"
+          javap -classpath "$CP" -p -s net.minecraft.world.level.portal.PortalShape > portalshape.txt
+          grep -Fq 'public net.minecraft.world.level.portal.PortalShape(net.minecraft.world.level.LevelAccessor, net.minecraft.core.BlockPos, net.minecraft.core.Direction$Axis);' portalshape.txt
+          grep -A2 -F 'public boolean isValid();' portalshape.txt | grep -Fq 'descriptor: ()Z'
+          grep -A2 -F 'public boolean isComplete();' portalshape.txt | grep -Fq 'descriptor: ()Z'
+          grep -A2 -F 'public void createPortalBlocks();' portalshape.txt | grep -Fq 'descriptor: ()V'
+          grep -A2 -F 'private static boolean isEmpty(net.minecraft.world.level.block.state.BlockState);' portalshape.txt | grep -Fq 'descriptor: (Lnet/minecraft/world/level/block/state/BlockState;)Z'
+          grep -Fq 'private final net.minecraft.world.level.LevelAccessor level;' portalshape.txt
+          grep -Fq 'private final net.minecraft.core.Direction$Axis axis;' portalshape.txt
+          grep -Fq 'private final net.minecraft.core.Direction rightDir;' portalshape.txt
+          grep -Fq 'private static final net.minecraft.world.level.block.state.BlockBehaviour$StatePredicate FRAME;' portalshape.txt
+      - name: Verify final JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR='release-staging/1.9.0/portalmod/build/libs/SGP-Shapeless-Nether-Portals-1.0.0.jar'
+          test -f "$JAR"
+          unzip -t "$JAR" >/dev/null
+          unzip -l "$JAR" > jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/PortalShapeMixin.class' jarfiles.txt
+          grep -Fq 'sgp/shapelessportals/mixin/PortalShapeAccessor.class' jarfiles.txt
+          grep -Fq 'META-INF/NOTICE-NICER-PORTALS.txt' jarfiles.txt
+          grep -Fq 'sgp_shapeless_nether_portals.mixins.json' jarfiles.txt
+          javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.PortalShapeMixin > mixin.txt
+          grep -Fq 'major version: 65' mixin.txt
+          grep -Fq 'net.minecraft.world.level.portal.PortalShape' mixin.txt
+          echo PORTALMOD_STATIC_VALIDATION_PASS
