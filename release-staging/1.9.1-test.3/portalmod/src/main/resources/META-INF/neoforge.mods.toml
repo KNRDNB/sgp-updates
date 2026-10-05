@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="sgp_shapeless_nether_portals"
+version="1.1.2"
+displayName="SGP Shapeless Nether Portals"
+authors="SGP; portal-shape algorithm adapted from Nicer Portals by Roundaround"
+description='''Allows arbitrary enclosed vertical Nether portal shapes, supports crying obsidian frames, and disables portal-generated zombified piglins.'''
+
+[[mixins]]
+config="sgp_shapeless_nether_portals.mixins.json"
+
+[[dependencies.sgp_shapeless_nether_portals]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.249,21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_shapeless_nether_portals]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
