@@ -86,6 +86,8 @@ jobs:
           javap -classpath "$JAR" -p -v sgp.shapelessportals.mixin.NetherPortalBlockMixin > netherportal-mixin.txt
           grep -Fq 'NetherPortalBlock' netherportal-mixin.txt
           grep -Fq 'randomTick' netherportal-mixin.txt
+          grep -Fq 'ZOMBIFIED_PIGLIN' netherportal-mixin.txt
+          grep -Fq 'EntityType.spawn' netherportal-mixin.txt
           unzip -p "$JAR" META-INF/neoforge.mods.toml | grep -Fq 'version="1.1.0"'
           unzip -p "$JAR" sgp_shapeless_nether_portals.mixins.json | grep -Fq 'BaseFireBlockMixin'
           unzip -p "$JAR" sgp_shapeless_nether_portals.mixins.json | grep -Fq 'NetherPortalBlockMixin'
