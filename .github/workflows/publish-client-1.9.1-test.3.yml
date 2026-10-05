@@ -1,0 +1,27 @@
+name: Publish SGP Client 1.9.1-test.3 portal TEST
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.9.1-test.3.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build, audit, publish and live-verify TEST3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/1.9.1-test.3/ci_publish_test3.sh
