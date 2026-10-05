@@ -72,7 +72,7 @@ public abstract class PortalShapeMixin {
 
             BlockState state = this.level.getBlockState(pos);
             boolean interior = PortalShapeAccessor.sgp$isEmpty(state);
-            boolean frame = FRAME.test(state, this.level, pos) || state.is(Blocks.CRYING_OBSIDIAN);
+            boolean frame = FRAME.test(state, this.level, pos);
 
             if (!interior && !frame) {
                 return;
