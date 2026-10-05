@@ -1,0 +1,29 @@
+name: Restore retired 1.9.0 portal source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/restore-retired-1.9.0-source.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore exact historical source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout d5048a76b0d19c813b578a8fbf2f29ca59402d75 -- release-staging/1.9.0/portalmod
+          git add -A release-staging/1.9.0/portalmod
+          git diff --cached --quiet && exit 0
+          git commit -m 'Restore retired 1.9.0 portal source tree'
+          git push
