@@ -50,12 +50,20 @@ with zipfile.ZipFile('SGP_ClientPatch_1.8.2-test.4.zip') as z:
     assert p['fromVersions'][-3:]==['1.8.2-test.1','1.8.2-test.2','1.8.2-test.3']
     assert '1.5.4' not in p['fromVersions']
 
-    cfg=next(a for a in p['actions'] if a.get('target')=='config/curios-common.toml')
-    cfg_text=z.read(cfg['source']).decode('utf-8')
-    assert cfg_text.count('id=amulet_pocket;size=6;order=-70')==1
-    assert 'id=wings;size=1;order=-100;add_cosmetic=true' in cfg_text
-    assert 'id=quiver;size=1;order=-90;add_cosmetic=true' in cfg_text
-    assert 'id=glasses;size=1;order=-80;add_cosmetic=true' in cfg_text
+    curios_actions=[
+        a for a in p['actions']
+        if a.get('type')=='tomlEdit' and a.get('target')=='config/curios-common.toml'
+    ]
+    values=[
+        e.get('value')
+        for a in curios_actions
+        for e in a.get('edits',[])
+        if e.get('op')=='arrayAddUnique' and e.get('path')=='slots'
+    ]
+    assert 'id=wings;size=1;order=-100;add_cosmetic=true' in values
+    assert 'id=quiver;size=1;order=-90;add_cosmetic=true' in values
+    assert 'id=glasses;size=1;order=-80;add_cosmetic=true' in values
+    assert values.count('id=amulet_pocket;size=6;order=-70')==1
 
     fix=next(a for a in p['actions'] if a.get('target')=='config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip')
     dp=z.read(fix['source'])
@@ -96,7 +104,7 @@ PY
 SHA="$(sha256sum "$ASSET" | awk '{print $1}')"
 FIXES_SHA="$(cat fixes_rev114_sha.txt)"
 RU_SHA="$(cat ru_19_sha.txt)"
-CFG_SHA="$(cat curios_config_sha.txt)"
+CFG_SHA="$(cat server122_curios_config_sha.txt)"
 SERVER_SHA="$(cat server122_sha.txt)"
 
 {
@@ -106,7 +114,7 @@ SERVER_SHA="$(cat server122_sha.txt)"
   echo
   echo '- Keeps the owner-PASS Soulbound compat JAR byte-identical.'
   echo '- Keeps owner-PASS SGP RU Localization 1.9 byte-identical: Glasses → Очки.'
-  echo '- Creates **amulet_pocket;size=6** in **config/curios-common.toml**, the same mechanism already used by SGP wings/quiver/glasses.'
+  echo '- Adds **amulet_pocket;size=6** via Installer **tomlEdit/arrayAddUnique** on **config/curios-common.toml**, exactly like the existing SGP wings/quiver/glasses actions.'
   echo '- SGP Fixes rev 1.14 keeps only the Potion Charm item tag for curios:amulet_pocket; failed datapack slot definition is removed.'
   echo '- Tooltip should therefore resolve «Слот: Кармашек для амулетов» once Curios loads the config-created slot type.'
   echo '- Cumulative from all accepted stable clients through 1.8.1, plus forward repair from test.1/test.2/test.3.'
@@ -142,8 +150,18 @@ with zipfile.ZipFile('verify.zip') as z:
     assert p['patchId']=='sgp-client-1.8.2-test.4'
     assert p['toVersion']=='1.8.2-test.4'
     assert p['fromVersions'][-3:]==['1.8.2-test.1','1.8.2-test.2','1.8.2-test.3']
-    cfg=next(a for a in p['actions'] if a.get('target')=='config/curios-common.toml')
-    assert z.read(cfg['source']).decode('utf-8').count('id=amulet_pocket;size=6;order=-70')==1
+    curios_actions=[
+        a for a in p['actions']
+        if a.get('type')=='tomlEdit' and a.get('target')=='config/curios-common.toml'
+    ]
+    matching=[
+        e for a in curios_actions for e in a.get('edits',[])
+        if e.get('op')=='arrayAddUnique'
+        and e.get('path')=='slots'
+        and e.get('value')=='id=amulet_pocket;size=6;order=-70'
+        and e.get('createIfMissing') is False
+    ]
+    assert len(matching)==1
     f=next(a for a in p['actions'] if a.get('target')=='config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip')
     with zipfile.ZipFile(io.BytesIO(z.read(f['source']))) as dz:
         assert 'data/sgp_fixes/curios/slots/amulet_pocket.json' not in dz.namelist()
