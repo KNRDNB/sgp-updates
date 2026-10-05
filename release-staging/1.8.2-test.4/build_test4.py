@@ -185,57 +185,33 @@ ru["sha256"]=new_ru_sha
 ru["size"]=new_ru_size
 ru["description"]="Установить SGP RU Localization 1.9: Очки + Кармашек для амулетов"
 
-# --- Curios managed common config: use the already-proven SGP config mechanism ---
-config_actions=[a for a in p["actions"] if a.get("type")=="copy" and a.get("target")==CURIOS_CONFIG_TARGET]
-if len(config_actions)>1:
-    raise AssertionError(config_actions)
+# --- Curios managed common config: use the same targeted edit mechanism as wings/quiver/glasses ---
+existing_curios_edits=[
+    a for a in p["actions"]
+    if a.get("type")=="tomlEdit" and a.get("target")==CURIOS_CONFIG_TARGET
+]
+existing_values=[]
+for a in existing_curios_edits:
+    for e in a.get("edits",[]):
+        if e.get("op")=="arrayAddUnique" and e.get("path")=="slots":
+            existing_values.append(e.get("value"))
+for value in BASE_CURIOS_SLOTS:
+    assert value in existing_values,value
+assert NEW_CURIOS_SLOT not in existing_values
 
-if config_actions:
-    cfg_action=config_actions[0]
-    cfg_path=BUILD/cfg_action["source"]
-    assert cfg_path.is_file()
-    raw=cfg_path.read_text("utf-8")
-else:
-    cfg_path=BUILD/"files/config/curios-common.toml"
-    cfg_path.parent.mkdir(parents=True,exist_ok=True)
-    raw=(
-      "#List of slots to create or modify.\n"
-      "#See documentation for syntax: https://docs.illusivesoulworks.com/curios/configuration#slot-configuration\n"
-      "#\n"
-      'slots = ["id=wings;size=1;order=-100;add_cosmetic=true", "id=quiver;size=1;order=-90;add_cosmetic=true", "id=glasses;size=1;order=-80;add_cosmetic=true"]\n'
-    )
-    cfg_path.write_text(raw,"utf-8")
-    cfg_action={
-      "actionId":"install-curios-common-amulet-pocket",
-      "type":"copy",
-      "description":"Обновить Curios common config: добавить 6 слотов Кармашек для амулетов",
-      "source":"files/config/curios-common.toml",
-      "target":CURIOS_CONFIG_TARGET,
-      "sha256":"",
-      "size":0
-    }
-    p["actions"].append(cfg_action)
-
-slots_line=None
-for line in raw.splitlines():
-    if line.startswith("slots = "):
-        slots_line=line
-        break
-assert slots_line is not None
-for entry in BASE_CURIOS_SLOTS:
-    assert entry in slots_line,entry
-assert NEW_CURIOS_SLOT not in slots_line
-
-new_entries=BASE_CURIOS_SLOTS+[NEW_CURIOS_SLOT]
-new_slots_line="slots = ["+", ".join(json.dumps(x,ensure_ascii=False) for x in new_entries)+"]"
-new_raw=raw.replace(slots_line,new_slots_line,1)
-assert new_raw.count(NEW_CURIOS_SLOT)==1
-cfg_path.write_text(new_raw,"utf-8")
-cfg_action["sha256"]=shaf(cfg_path)
-cfg_action["size"]=cfg_path.stat().st_size
-cfg_action["description"]="Обновить Curios common config: 6 слотов «Кармашек для амулетов»"
-cfg_sha=cfg_action["sha256"]
-cfg_size=cfg_action["size"]
+cfg_action={
+    "actionId":"add-dedicated-amulet-pocket-slot",
+    "type":"tomlEdit",
+    "description":"Добавить 6 Curios-слотов «Кармашек для амулетов»",
+    "target":CURIOS_CONFIG_TARGET,
+    "edits":[{
+        "op":"arrayAddUnique",
+        "path":"slots",
+        "value":NEW_CURIOS_SLOT,
+        "createIfMissing":False
+    }]
+}
+p["actions"].append(cfg_action)
 
 # Preserve already-working Soulbound compat bytes exactly.
 mod_payload=BUILD/MOD_SOURCE
@@ -292,7 +268,7 @@ pp.write_text(json.dumps(p,ensure_ascii=False,indent=2)+"\n","utf-8")
 )
 
 after_outer=hashes(BUILD)
-allowed={"patch.json","README.txt",fix["source"],ru["source"],cfg_action["source"],MOD_SOURCE}
+allowed={"patch.json","README.txt",fix["source"],ru["source"],MOD_SOURCE}
 changed_outer={k for k in set(before_outer)|set(after_outer) if before_outer.get(k)!=after_outer.get(k)}
 assert changed_outer==allowed,changed_outer
 
@@ -312,23 +288,29 @@ with zipfile.ZipFile(OUT) as z:
     for v in ACCEPTED: assert v in q["fromVersions"],v
     assert q["fromVersions"][-3:]==["1.8.2-test.1","1.8.2-test.2","1.8.2-test.3"]
     assert hashlib.sha256(z.read(MOD_SOURCE)).hexdigest()==MOD_SHA
-    ca=next(a for a in q["actions"] if a.get("target")==CURIOS_CONFIG_TARGET)
-    cfg=z.read(ca["source"]).decode("utf-8")
-    assert cfg.count(NEW_CURIOS_SLOT)==1
+    curios_actions=[
+        a for a in q["actions"]
+        if a.get("type")=="tomlEdit" and a.get("target")==CURIOS_CONFIG_TARGET
+    ]
+    matching=[
+        e for a in curios_actions for e in a.get("edits",[])
+        if e.get("op")=="arrayAddUnique"
+        and e.get("path")=="slots"
+        and e.get("value")==NEW_CURIOS_SLOT
+        and e.get("createIfMissing") is False
+    ]
+    assert len(matching)==1,matching
 
 Path("fixes_rev114_sha.txt").write_text(new_fix_sha+"\n","utf-8")
 Path("fixes_rev114_size.txt").write_text(str(new_fix_size)+"\n","utf-8")
 Path("ru_19_sha.txt").write_text(new_ru_sha+"\n","utf-8")
 Path("ru_19_size.txt").write_text(str(new_ru_size)+"\n","utf-8")
-Path("curios_config_sha.txt").write_text(cfg_sha+"\n","utf-8")
-Path("curios_config_size.txt").write_text(str(cfg_size)+"\n","utf-8")
 print("CLIENT_182_TEST4_CUMULATIVE_AUDIT_PASS")
 print("FIXES_SHA="+new_fix_sha)
 print("FIXES_SIZE="+str(new_fix_size))
 print("RU_SHA="+new_ru_sha)
 print("RU_SIZE="+str(new_ru_size))
-print("CONFIG_SHA="+cfg_sha)
-print("CONFIG_SIZE="+str(cfg_size))
+print("CURIOS_EDIT="+NEW_CURIOS_SLOT)
 print("MOD_SHA="+MOD_SHA)
 print("MOD_SIZE="+str(MOD_SIZE))
 print("FINAL_SHA="+shaf(OUT))
