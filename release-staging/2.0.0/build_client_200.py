@@ -36,33 +36,50 @@ assert "1.5.4" not in p["fromVersions"]
 actions_before=copy.deepcopy(p["actions"])
 payload_before={k:v for k,v in hashes(BUILD).items() if k.startswith("files/")}
 
-# Stable identity only. Runtime-tested actions and payload bytes must not change.
+# Owner-authorized emergency packaging correction:
+# client baseline already contains Puzzles Lib 21.1.60 under a versioned filename,
+# so stable 2.0.0 must explicitly remove it before installing 21.1.62.
+OLD_PUZ_TARGET="mods/PuzzlesLib-v21.1.60-mc1.21.1-NeoForge.jar"
+NEW_PUZ_TARGET="mods/puzzleslib-v21.1.62-mc1.21.1+neoforge.jar"
+old_delete={
+ "actionId":"remove-old-puzzleslib-21-1-60",
+ "type":"delete",
+ "description":"Удалить старый Puzzles Lib 21.1.60 перед установкой 21.1.62",
+ "target":OLD_PUZ_TARGET,
+ "optional":True
+}
+assert not any(a.get("target")==OLD_PUZ_TARGET for a in p["actions"])
+puz_i=next(i for i,a in enumerate(p["actions"]) if a.get("type")=="copy" and a.get("target")==NEW_PUZ_TARGET)
+p["actions"].insert(puz_i,old_delete)
+
 p["patchId"]="sgp-client-2.0.0"
 p["name"]="SGP Client 2.0.0"
 p["toVersion"]="2.0.0"
 p["fromVersions"]=list(p["fromVersions"])+["1.10.0-test.4"]
 for v in ACCEPTED+TESTS: assert v in p["fromVersions"],v
-assert p["actions"]==actions_before
+assert len(p["actions"])==len(actions_before)+1
+assert [a for a in p["actions"] if a.get("actionId")=="remove-old-puzzleslib-21-1-60"]==[old_delete]
+assert p["actions"].index(old_delete) < next(i for i,a in enumerate(p["actions"]) if a.get("type")=="copy" and a.get("target")==NEW_PUZ_TARGET)
 assert "1.5.4" not in p["fromVersions"]
 p["summary"]=[
- "Stable 2.0.0 promoted from owner-runtime-PASS 1.10.0-test.4 with identical payload/actions.",
+ "Stable 2.0.0 emergency packaging correction authorized by owner after live client evidence showed both Puzzles Lib 21.1.60 and 21.1.62 present.",
+ "Delete exact old client JAR PuzzlesLib-v21.1.60-mc1.21.1-NeoForge.jar if present, then install Puzzles Lib 21.1.62.",
+ "All runtime-tested gameplay/config payload bytes from 1.10.0-test.4 remain unchanged.",
  "ArmorHUD right-side spacing remains -111 for leggings/boots/offhand/inventory icon.",
- "Permanent Sponges 21.1.0 + Puzzles Lib 21.1.62 remain exactly as tested.",
- "SGP Fixes rev 1.15 keeps Soulbound eligibility for both sponge-on-a-stick items.",
- "Existing Unbreakable Catalyst remains a baseline component and is not installed/replaced/deleted by this patch.",
- "SGP RU Localization 1.10 provides all five Permanent Sponges Russian strings."
+ "Permanent Sponges 21.1.0 + SGP Fixes rev 1.15 + RU Localization 1.10 remain exactly as tested.",
+ "Existing Unbreakable Catalyst remains a baseline component and is not installed/replaced/deleted by this patch."
 ]
 pp.write_text(json.dumps(p,ensure_ascii=False,indent=2)+"\n","utf-8")
 (BUILD/"README.txt").write_text(
  "SGP Client 2.0.0\n"
  "Minecraft 1.21.1 / NeoForge 21.1.249 / Java 21\n\n"
- "Owner-runtime-PASS payload promoted from 1.10.0-test.4.\n"
- "Stable identity chosen by owner: 2.0.0 (stable 1.10.0 is intentionally skipped).\n"
- "- ArmorHUD right-side spacing fix.\n"
- "- Permanent Sponges + Puzzles Lib.\n"
- "- Soulbound compatibility for both sponge sticks.\n"
- "- Existing Unbreakable Catalyst remains untouched.\n"
- "- Permanent Sponges Russian localization via SGP RU Localization 1.10.\n",
+ "Owner-authorized corrected stable 2.0.0.\n"
+ "Live client evidence showed both Puzzles Lib 21.1.60 and 21.1.62.\n"
+ "- Exact old JAR PuzzlesLib-v21.1.60-mc1.21.1-NeoForge.jar is deleted if present.\n"
+ "- Puzzles Lib 21.1.62 is then installed under its correct filename.\n"
+ "- All gameplay/config payload bytes from runtime-PASS 1.10.0-test.4 are unchanged.\n"
+ "- ArmorHUD, Permanent Sponges, Soulbound compatibility and RU localization remain unchanged.\n"
+ "- Existing Unbreakable Catalyst remains untouched.\n",
  "utf-8"
 )
 
@@ -81,18 +98,22 @@ with zipfile.ZipFile(OUT) as z:
     assert z.testzip() is None
     q=json.loads(z.read("patch.json"))
     assert q["patchId"]=="sgp-client-2.0.0" and q["toVersion"]=="2.0.0"
-    assert q["actions"]==actions_before
     for v in ACCEPTED+TESTS: assert v in q["fromVersions"],v
-    # Existing-component regression guard.
+    assert len(q["actions"])==len(actions_before)+1
+    d=next(a for a in q["actions"] if a.get("actionId")=="remove-old-puzzleslib-21-1-60")
+    assert d==old_delete
+    di=q["actions"].index(d)
+    ni=next(i for i,a in enumerate(q["actions"]) if a.get("type")=="copy" and a.get("target")==NEW_PUZ_TARGET)
+    assert di < ni
+    # Existing-component regression guards.
     assert not any(a.get("target")=="mods/unbreakablecatalyst-1.0.2.jar" for a in q["actions"])
-    # Exact tested components preserved.
     assert any(a.get("target")=="mods/PermanentSponges-v21.1.0-1.21.1-NeoForge.jar" for a in q["actions"])
-    assert any(a.get("target")=="mods/puzzleslib-v21.1.62-mc1.21.1+neoforge.jar" for a in q["actions"])
+    assert any(a.get("target")==NEW_PUZ_TARGET for a in q["actions"])
     h=next(a for a in q["actions"] if a.get("actionId")=="shift-right-armorhud-8px")
     assert [e["value"] for e in h["edits"]]==[-111,-111,-111,-111]
 
 Path("client200_sha.txt").write_text(shaf(OUT)+"\n","utf-8")
 Path("client200_size.txt").write_text(str(OUT.stat().st_size)+"\n","utf-8")
-print("CLIENT_200_STABLE_IDENTITY_AUDIT_PASS")
+print("CLIENT_200_PUZZLESLIB_CLEANUP_AUDIT_PASS")
 print("FINAL_SHA="+shaf(OUT))
 print("FINAL_SIZE="+str(OUT.stat().st_size))
