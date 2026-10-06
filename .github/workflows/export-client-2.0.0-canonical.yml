@@ -1,0 +1,49 @@
+name: Export SGP 2.0.0 canonical resources
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/export-client-2.0.0-canonical.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact accepted custom resources
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download v2.0.0 --repo KNRDNB/sgp-updates -p SGP_ClientPatch_2.0.0.zip
+          echo 'aeab5276fcc92ba3f8c2375f87563c7a0ede0a2dee5b94e158b62bdab7ff2ef1  SGP_ClientPatch_2.0.0.zip' | sha256sum -c -
+          python3 - <<'PY'
+          import hashlib,json,zipfile
+          z=zipfile.ZipFile('SGP_ClientPatch_2.0.0.zip')
+          p=json.loads(z.read('patch.json'))
+          targets={
+            'config/paxi/datapacks/SGP_Fixes_NeoForge_1.21.1.zip':'SGP_Fixes_NeoForge_1.21.1.zip',
+            'config/paxi/resourcepacks/SGP_RU_Localization_MC1.21.1.zip':'SGP_RU_Localization_MC1.21.1.zip'
+          }
+          for target,out in targets.items():
+            a=next(x for x in p['actions'] if x.get('type')=='copy' and x.get('target')==target)
+            b=z.read(a['source'])
+            assert hashlib.sha256(b).hexdigest()==a['sha256']
+            assert len(b)==a['size']
+            open(out,'wb').write(b)
+          assert hashlib.sha256(open('SGP_Fixes_NeoForge_1.21.1.zip','rb').read()).hexdigest()=='1c9b8e1a702b4a481dfd823e3535d2763b2ec92fc83abed4bbe0b18f8b419191'
+          assert hashlib.sha256(open('SGP_RU_Localization_MC1.21.1.zip','rb').read()).hexdigest()=='dd4319b2c501aa89c97710359d1a6ab8117bb53a42adee7021defaddda49386d'
+          print('CANONICAL_200_RESOURCE_EXPORT_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SGP_2.0.0_Canonical_Resources
+          path: |
+            SGP_Fixes_NeoForge_1.21.1.zip
+            SGP_RU_Localization_MC1.21.1.zip
+          retention-days: 14
+          if-no-files-found: error
