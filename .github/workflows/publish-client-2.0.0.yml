@@ -1,3 +1,4 @@
+# retry 2: TOML whitespace-safe modId preflight
 name: Publish SGP Client 2.0.0 stable and build server 2.0.0
 
 on:
