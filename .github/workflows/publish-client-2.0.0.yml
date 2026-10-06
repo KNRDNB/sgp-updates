@@ -1,5 +1,5 @@
-# retry 2: TOML whitespace-safe modId preflight
-name: Publish SGP Client 2.0.0 stable and build server 2.0.0
+# corrected cumulative 2.0.0: client-only republish after Puzzles Lib duplicate fix
+name: Publish corrected cumulative SGP Client 2.0.0
 
 on:
   push:
@@ -15,14 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build, audit, publish stable and verify live asset
+      - name: Build, audit, publish and live-verify corrected cumulative 2.0.0
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash release-staging/2.0.0/ci_publish_stable200.sh
-      - name: Upload matching server 2.0.0
-        uses: actions/upload-artifact@v4
-        with:
-          name: SGP_ServerPatch_2.0.0
-          path: SGP_ServerPatch_2.0.0.zip
-          retention-days: 14
-          if-no-files-found: error
