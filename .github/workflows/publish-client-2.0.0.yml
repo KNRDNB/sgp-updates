@@ -1,4 +1,4 @@
-# corrected cumulative 2.0.0: client-only republish after Puzzles Lib duplicate fix
+# corrected cumulative 2.0.0 retry: preserve exact TEST4 cumulative/forward-repair lineage
 name: Publish corrected cumulative SGP Client 2.0.0
 
 on:
