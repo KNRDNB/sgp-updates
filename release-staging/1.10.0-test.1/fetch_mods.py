@@ -39,12 +39,16 @@ qs=urllib.parse.urlencode({
   "game_versions":json.dumps(["1.21.1"])
 })
 versions=get_json("https://api.modrinth.com/v2/project/puzzles-lib/version?"+qs)
-target_version="v21.1.62-mc1.21.1+neoforge"
-puz=next(v for v in versions if v["version_number"]==target_version)
+puz_name="puzzleslib-v21.1.62-mc1.21.1+neoforge.jar"
+matches=[
+  (v,f) for v in versions
+  for f in v["files"]
+  if f["filename"]==puz_name
+]
+assert len(matches)==1,[(v["version_number"],f["filename"]) for v,f in matches]
+puz,puz_file=matches[0]
 assert "neoforge" in puz["loaders"]
 assert "1.21.1" in puz["game_versions"]
-puz_name="puzzleslib-v21.1.62-mc1.21.1+neoforge.jar"
-puz_file=next(f for f in puz["files"] if f["filename"]==puz_name)
 puz_meta=fetch_file(puz_file["url"],puz_name,puz_file["hashes"]["sha512"])
 puz_meta["version_id"]=puz["id"]
 puz_meta["version_number"]=puz["version_number"]
