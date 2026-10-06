@@ -1,0 +1,20 @@
+name: Publish SGP Client 1.10.0-test.4 Permanent Sponges RU TEST
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-1.10.0-test.4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, audit, publish and live-verify TEST4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/1.10.0-test.4/ci_publish_test4.sh
