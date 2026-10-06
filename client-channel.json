@@ -1,0 +1,41 @@
+{
+  "state": "ACTIVE",
+  "activatedUtc": "2026-10-06T21:20:08.592884+00:00",
+  "installerVersion": "2.0.0",
+  "installerTag": "installer-v2.0.0",
+  "installerReleaseId": 405096590,
+  "installerSHA256": "7FFB5A45B9C2A2FFEFCC6C32DC2BBD88EA55618DAFECAF3DC5B2FF62BB44F952",
+  "installerBytes": 140428583,
+  "installerFileProductVersion": "2.0.0.0",
+  "installerAssets": [
+    {
+      "name": "SGP-Patch-Installer.exe",
+      "id": 616620185,
+      "size": 140428583,
+      "digest": "sha256:7ffb5a45b9c2a2ffefcc6c32dc2bbd88ea55618dafecaf3dc5b2ff62bb44f952"
+    },
+    {
+      "name": "SGP-Patch-Installer.exe.sha256",
+      "id": 616522471,
+      "size": 91,
+      "digest": "sha256:e3e79ffb4db7c82af139d13ab159b058739c64dfdf0adf391cafc210de90a080"
+    }
+  ],
+  "installerSourceCommit": "7269b36ad77bc522a28e63cf57baed33e6d5bac3",
+  "installerSourceTag": "v2.0.0",
+  "ownerVisual": "PASS",
+  "livePublicSelfUpdate": "PASS",
+  "evidence": "KNRDNB/SGPPatchInstaller/RELEASE_VALIDATION.md",
+  "stableTag": "client-vX.Y.Z",
+  "testTag": "client-vX.Y.Z-test.N",
+  "assets": [
+    "SGP_ClientPatch_X.Y.Z.zip",
+    "SGP_ClientPatch_X.Y.Z.meta.json"
+  ],
+  "legacyBridgeTag": "v2.0.0",
+  "legacyBridgeReleaseId": 405053216,
+  "legacyBridgeAssetId": 616399206,
+  "legacyBridgeSHA256": "1FD2139E0AEEE986CD57728EEC9B8783B2E37691B212DA9E5951B0CF07BC263A",
+  "legacyBridgeBytes": 21752630,
+  "newClientPatchPublished": false
+}
