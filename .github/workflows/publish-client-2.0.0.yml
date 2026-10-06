@@ -1,0 +1,27 @@
+name: Publish SGP Client 2.0.0 stable and build server 2.0.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.0.0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, audit, publish stable and verify live asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.0/ci_publish_stable200.sh
+      - name: Upload matching server 2.0.0
+        uses: actions/upload-artifact@v4
+        with:
+          name: SGP_ServerPatch_2.0.0
+          path: SGP_ServerPatch_2.0.0.zip
+          retention-days: 14
+          if-no-files-found: error
