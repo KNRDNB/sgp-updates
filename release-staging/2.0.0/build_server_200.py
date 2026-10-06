@@ -1,4 +1,4 @@
-import hashlib, io, json, shutil, zipfile
+import hashlib, io, json, re, shutil, zipfile
 from pathlib import Path
 
 ROOT=Path.cwd()
@@ -68,12 +68,12 @@ with zipfile.ZipFile(io.BytesIO(fix_bytes)) as fz:
 with zipfile.ZipFile(io.BytesIO(perm_bytes)) as pz:
     assert pz.testzip() is None
     toml=pz.read("META-INF/neoforge.mods.toml").decode("utf-8")
-    assert 'modId="permanentsponges"' in toml
-    assert 'modId="puzzleslib"' in toml
+    assert re.search(r'modId\s*=\s*"permanentsponges"',toml)
+    assert re.search(r'modId\s*=\s*"puzzleslib"',toml)
 with zipfile.ZipFile(io.BytesIO(puz_bytes)) as pz:
     assert pz.testzip() is None
     toml=pz.read("META-INF/neoforge.mods.toml").decode("utf-8")
-    assert 'modId="puzzleslib"' in toml
+    assert re.search(r'modId\s*=\s*"puzzleslib"',toml)
 
 for target,data in [(FIX_TARGET,fix_bytes),(PERM_TARGET,perm_bytes),(PUZ_TARGET,puz_bytes)]:
     p=BUILD/target
