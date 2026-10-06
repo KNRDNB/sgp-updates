@@ -14,11 +14,13 @@ NEW_PUZ="mods/puzzleslib-v21.1.62-mc1.21.1+neoforge.jar"
 
 # Owner manually deleted the defective public release. Refuse to overwrite any unexpected replacement.
 ! gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1
-TAG_JSON="$(gh api "repos/$REPO/git/ref/tags/$TAG")"
-test "$(printf '%s' "$TAG_JSON" | jq -r '.object.sha')" = "$STALE_TAG_SHA"
-gh api -X DELETE "repos/$REPO/git/refs/tags/$TAG"
+if gh api "repos/$REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
+  TAG_JSON="$(gh api "repos/$REPO/git/ref/tags/$TAG")"
+  test "$(printf '%s' "$TAG_JSON" | jq -r '.object.sha')" = "$STALE_TAG_SHA"
+  gh api -X DELETE "repos/$REPO/git/refs/tags/$TAG"
+fi
 ! gh api "repos/$REPO/git/ref/tags/$TAG" >/dev/null 2>&1
-echo STALE_200_TAG_REMOVED_PASS
+echo STALE_200_TAG_ABSENT_PASS
 
 # Stable 1.10.0 is intentionally skipped.
 ! gh api "repos/$REPO/releases/tags/v1.10.0" >/dev/null 2>&1
@@ -46,17 +48,23 @@ accepted=[
  "1.3.0","1.3.1","1.3.2","1.3.3","1.4.0","1.5.0","1.5.1","1.5.2","1.5.3",
  "1.6.0","1.6.1","1.6.2","1.7.0","1.7.1","1.8.0","1.8.1","1.8.2","1.9.1"
 ]
-tests=["1.10.0-test.1","1.10.0-test.2","1.10.0-test.3","1.10.0-test.4"]
-expected=accepted+tests
 old='mods/PuzzlesLib-v21.1.60-mc1.21.1-NeoForge.jar'
 new='mods/puzzleslib-v21.1.62-mc1.21.1+neoforge.jar'
+
+with zipfile.ZipFile('SGP_ClientPatch_1.10.0-test.4.zip') as tz:
+    tp=json.loads(tz.read('patch.json'))
+    assert tp['patchId']=='sgp-client-1.10.0-test.4'
+    expected_from=tp['fromVersions']+['1.10.0-test.4']
 
 with zipfile.ZipFile('SGP_ClientPatch_2.0.0.zip') as z:
     assert z.testzip() is None
     p=json.loads(z.read('patch.json'))
     assert p['patchId']=='sgp-client-2.0.0'
     assert p['toVersion']=='2.0.0'
-    assert p['fromVersions']==expected, (p['fromVersions'], expected)
+    # Preserve the exact cumulative/forward-repair lineage of the runtime-PASS fixture.
+    assert p['fromVersions']==expected_from, (p['fromVersions'], expected_from)
+    for v in accepted:
+        assert v in p['fromVersions'], v
     assert '1.5.4' not in p['fromVersions']
 
     ds=[a for a in p['actions'] if a.get('actionId')=='remove-old-puzzleslib-21-1-60']
@@ -123,12 +131,15 @@ accepted=[
  "1.3.0","1.3.1","1.3.2","1.3.3","1.4.0","1.5.0","1.5.1","1.5.2","1.5.3",
  "1.6.0","1.6.1","1.6.2","1.7.0","1.7.1","1.8.0","1.8.1","1.8.2","1.9.1"
 ]
-tests=["1.10.0-test.1","1.10.0-test.2","1.10.0-test.3","1.10.0-test.4"]
+with zipfile.ZipFile('SGP_ClientPatch_1.10.0-test.4.zip') as tz:
+    expected_from=json.loads(tz.read('patch.json'))['fromVersions']+['1.10.0-test.4']
 with zipfile.ZipFile('verify.zip') as z:
     assert z.testzip() is None
     p=json.loads(z.read('patch.json'))
     assert p['patchId']=='sgp-client-2.0.0' and p['toVersion']=='2.0.0'
-    assert p['fromVersions']==accepted+tests
+    assert p['fromVersions']==expected_from
+    for v in accepted: assert v in p['fromVersions'],v
+    assert '1.5.4' not in p['fromVersions']
     d=next(a for a in p['actions'] if a.get('actionId')=='remove-old-puzzleslib-21-1-60')
     assert d['type']=='delete' and d['optional'] is True
     assert d['target']=='mods/PuzzlesLib-v21.1.60-mc1.21.1-NeoForge.jar'
