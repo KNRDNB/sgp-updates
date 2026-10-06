@@ -36,25 +36,6 @@ assert "1.5.4" not in p["fromVersions"]
 actions_before=copy.deepcopy(p["actions"])
 payload_before={k:v for k,v in hashes(BUILD).items() if k.startswith("files/")}
 
-# Owner-authorized correction of the first defective v2.0.0 bridge:
-# Puzzles Lib 21.1.60 already exists in the accepted client baseline under
-# a different versioned filename. Remove that exact old JAR before copying
-# the tested 21.1.62 payload. Optional=true keeps this cumulative/idempotent
-# for source states where the old JAR is already absent.
-PUZ_OLD_TARGET="mods/PuzzlesLib-v21.1.60-mc1.21.1-NeoForge.jar"
-PUZ_NEW_TARGET="mods/puzzleslib-v21.1.62-mc1.21.1+neoforge.jar"
-puz_index=next(i for i,a in enumerate(p["actions"]) if a.get("type")=="copy" and a.get("target")==PUZ_NEW_TARGET)
-delete_action={
- "actionId":"remove-puzzleslib-21-1-60",
- "type":"delete",
- "description":"Удалить старый Puzzles Lib 21.1.60 перед установкой 21.1.62",
- "target":PUZ_OLD_TARGET,
- "optional":True
-}
-assert not any(a.get("actionId")==delete_action["actionId"] for a in p["actions"])
-assert not any(a.get("target")==PUZ_OLD_TARGET for a in p["actions"])
-p["actions"].insert(puz_index,delete_action)
-
 # Owner-authorized emergency packaging correction:
 # client baseline already contains Puzzles Lib 21.1.60 under a versioned filename,
 # so stable 2.0.0 must explicitly remove it before installing 21.1.62.
