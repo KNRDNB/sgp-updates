@@ -1,3 +1,4 @@
+# retry 2: resolve Puzzles Lib by exact NeoForge filename
 name: Publish SGP Client 1.10.0-test.1 HUD + Permanent Sponges TEST
 
 on:
