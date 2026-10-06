@@ -1,0 +1,20 @@
+name: Replace SGP Client 2.0.0 cumulative Puzzles Lib fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/replace-client-2.0.0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build corrected cumulative bridge, replace old tag, publish and live-verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.0/ci_replace_stable200.sh
