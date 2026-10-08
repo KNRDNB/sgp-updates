@@ -115,7 +115,7 @@ def publish(args, m):
     for endpoint in ("releases/tags/", "git/ref/tags/"):
         response = gh("api", "repos/" + REPO + "/" + endpoint + args.tag, check=False)
         require(response.returncode != 0 and "HTTP 404" in response.stderr, "Existing tag/release or inconclusive identity check")
-    gh("release", "create", args.tag, str(args.zip), str(args.metadata), "--repo", REPO, "--draft", "--title", args.tag, "--notes-file", str(args.notes), *(["--prerelease"] if args.channel == "test" else []))
+    gh("release", "create", args.tag, str(args.zip), str(args.metadata), "--repo", REPO, "--draft", "--title", "SGP Client " + m["toVersion"], "--notes-file", str(args.notes), *(["--prerelease"] if args.channel == "test" else []))
     with tempfile.TemporaryDirectory(prefix="SGP-draft-binding-") as temp:
         gh("release", "download", args.tag, "--repo", REPO, "--dir", temp)
         files = list(pathlib.Path(temp).iterdir())
