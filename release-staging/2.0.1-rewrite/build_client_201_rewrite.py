@@ -103,7 +103,7 @@ for token in ["computePlaqueRight","bipush        19","bipush        28","bipush
 assert "bipush        9" not in render
 assert "bipush        25" not in render
 
-helper_javap=run("javap","-classpath",str(new),"-p","-c","sgp.client.branding.PostCutoverReleaseFinder").stdout
+helper_javap=run("javap","-classpath",str(new),"-p","-c","-v","sgp.client.branding.PostCutoverReleaseFinder").stdout
 for token in ["client-v","SGP_ClientPatch_","meta.json","prerelease","draft"]:
     assert token in helper_javap,token
 
