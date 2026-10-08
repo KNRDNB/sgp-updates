@@ -52,3 +52,5 @@ Guard self-checks: `python scripts/test_client_release_guard.py`.
 Authoritative product context: private `KNRDNB/sgp-context` and
 `KNRDNB/SGPPatchInstaller`; canonical pointer `SGP_PROJECT_POINTER.md` in
 the context repository.
+
+Release title is `SGP Client X.Y.Z` (or `SGP Client X.Y.Z-test.N`); the `client-v...` tag remains the authoritative release identity.
