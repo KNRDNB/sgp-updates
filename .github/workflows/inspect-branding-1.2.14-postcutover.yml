@@ -1,0 +1,37 @@
+name: Inspect Branding 1.2.14 post-cutover
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/inspect-branding-1.2.14-postcutover.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact accepted bridge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v2.0.0 --repo KNRDNB/sgp-updates --pattern SGP_ClientPatch_2.0.0.zip
+          echo "1fd2139e0aeee986cd57728eec9b8783b2e37691b212da9e5951b0cf07bc263a  SGP_ClientPatch_2.0.0.zip" | sha256sum -c -
+          mkdir unpack
+          unzip -q SGP_ClientPatch_2.0.0.zip -d unpack
+          BRAND="$(find unpack -type f -name 'SGP-Client-Branding-1.2.14.jar' -print -quit)"
+          test -n "$BRAND"
+          echo "7f3f308ccbe4324d7e4e3c20ae9f3ecf9e67fa34d8351d1e2aa1af2c6d474244  $BRAND" | sha256sum -c -
+          javap -classpath "$BRAND" -p -c -v sgp.client.branding.SgpClientBranding > branding-1.2.14-javap.txt
+          unzip -p "$BRAND" META-INF/neoforge.mods.toml > branding-1.2.14-mods.toml
+          sha256sum "$BRAND" > branding-1.2.14-sha.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: branding-1.2.14-inspection
+          path: |
+            branding-1.2.14-javap.txt
+            branding-1.2.14-mods.toml
+            branding-1.2.14-sha.txt
