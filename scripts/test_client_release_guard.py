@@ -105,6 +105,10 @@ class GuardTests(unittest.TestCase):
             with patch.object(guard, "ROOT", self.root), patch.object(guard, "gh", return_value=SimpleNamespace(stdout=json.dumps(changed))):
                 with self.assertRaises(ValueError): guard.activation(self.m)
 
+
+    def test_release_title_convention(self):
+        self.assertEqual("SGP Client " + self.m["toVersion"], "SGP Client 2.1.0")
+
     def test_existing_tag_is_never_replaced(self):
         args = SimpleNamespace(notes=self.root / "notes.md", tag="client-v2.1.0")
         with patch.object(guard, "activation"), patch.object(guard, "gh", return_value=SimpleNamespace(returncode=0, stderr="")) as call:
