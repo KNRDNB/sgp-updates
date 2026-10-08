@@ -37,5 +37,5 @@
   "legacyBridgeAssetId": 616399206,
   "legacyBridgeSHA256": "1FD2139E0AEEE986CD57728EEC9B8783B2E37691B212DA9E5951B0CF07BC263A",
   "legacyBridgeBytes": 21752630,
-  "newClientPatchPublished": false
+  "newClientPatchPublished": true
 }
