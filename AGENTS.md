@@ -6,7 +6,7 @@ owner authorization gates remain mandatory. Installer acceptance is not a
 Minecraft runtime PASS.
 
 For every new client release above 2.0.0, use `scripts/client-release-guard.py`
-before publication. Stable: `client-vX.Y.Z`; TEST: `client-vX.Y.Z-test.N`.
+before publication. Stable: `client-vX.Y.Z`; TEST: `client-vX.Y.Z-test.N`. Release title: `SGP Client X.Y.Z` / `SGP Client X.Y.Z-test.N`; the tag remains the authoritative identity.
 Publish exactly the canonical ZIP and strict `.meta.json` pair. The guarded
 `--publish` path verifies accepted Installer identity, rejects existing
 tags/releases, creates Draft, downloads/verifies both assets, then publishes.
