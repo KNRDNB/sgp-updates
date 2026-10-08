@@ -1,0 +1,39 @@
+name: Fix SGP Client 2.0.1 release title
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-client-2.0.1-title.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rename current client release title only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REPO="KNRDNB/sgp-updates"
+          TAG="client-v2.0.1"
+          BEFORE="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$BEFORE" | jq -r '.id')" = "406882273"
+          test "$(printf '%s' "$BEFORE" | jq -r '.draft')" = false
+          test "$(printf '%s' "$BEFORE" | jq -r '.prerelease')" = false
+          test "$(printf '%s' "$BEFORE" | jq -r '.tag_name')" = "$TAG"
+          test "$(printf '%s' "$BEFORE" | jq '.assets | length')" = 2
+          ZIP_DIGEST="$(printf '%s' "$BEFORE" | jq -r '.assets[] | select(.name=="SGP_ClientPatch_2.0.1.zip") | .digest')"
+          META_DIGEST="$(printf '%s' "$BEFORE" | jq -r '.assets[] | select(.name=="SGP_ClientPatch_2.0.1.meta.json") | .digest')"
+          gh release edit "$TAG" --repo "$REPO" --title "SGP Client 2.0.1"
+          AFTER="$(gh api "repos/$REPO/releases/tags/$TAG")"
+          test "$(printf '%s' "$AFTER" | jq -r '.name')" = "SGP Client 2.0.1"
+          test "$(printf '%s' "$AFTER" | jq -r '.id')" = "406882273"
+          test "$(printf '%s' "$AFTER" | jq -r '.tag_name')" = "$TAG"
+          test "$(printf '%s' "$AFTER" | jq '.assets | length')" = 2
+          test "$(printf '%s' "$AFTER" | jq -r '.assets[] | select(.name=="SGP_ClientPatch_2.0.1.zip") | .digest')" = "$ZIP_DIGEST"
+          test "$(printf '%s' "$AFTER" | jq -r '.assets[] | select(.name=="SGP_ClientPatch_2.0.1.meta.json") | .digest')" = "$META_DIGEST"
+          echo CLIENT_201_TITLE_FIX_PASS
