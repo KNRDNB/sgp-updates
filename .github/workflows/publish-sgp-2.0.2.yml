@@ -1,0 +1,50 @@
+name: Publish SGP 2.0.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-sgp-2.0.2.yml"
+      - "release-staging/2.0.2/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build, audit, publish client and prepare server handoff
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: bash release-staging/2.0.2/ci_publish_202.sh
+      - name: Upload exact 2.0.2 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-2.0.2-release-evidence
+          path: |
+            SGP_ClientPatch_2.0.2.zip
+            SGP_ClientPatch_2.0.2.meta.json
+            SGP_ServerPatch_2.0.2.zip
+            build-202.txt
+            release-202-result.txt
+            client_sha.txt
+            client_size.txt
+            meta_sha.txt
+            meta_size.txt
+            target_create_sha.txt
+            target_create_size.txt
+            target_hud_sha.txt
+            target_hud_size.txt
+            server_sha.txt
+            server_size.txt
+            server_pack_sha.txt
+            server_pack_size.txt
+            server_history_sha.txt
+            server_history_size.txt
+          retention-days: 30
+          if-no-files-found: error
