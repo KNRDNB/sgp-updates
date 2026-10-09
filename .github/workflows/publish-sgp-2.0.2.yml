@@ -20,7 +20,7 @@ jobs:
           python-version: "3.12"
       - name: Build, audit, publish client and prepare server handoff
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: bash release-staging/2.0.2/ci_publish_202.sh
       - name: Upload exact 2.0.2 evidence
         uses: actions/upload-artifact@v4
