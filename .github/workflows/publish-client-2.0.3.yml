@@ -1,0 +1,41 @@
+name: Publish SGP Client 2.0.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.0.3.yml"
+      - "release-staging/2.0.3/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build, audit and publish client 2.0.3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.3/ci_publish_client_203.sh
+      - name: Upload exact 2.0.3 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-2.0.3-release-evidence
+          path: |
+            SGP_ClientPatch_2.0.3.zip
+            SGP_ClientPatch_2.0.3.meta.json
+            build-client-203.txt
+            release-client-203-result.txt
+            client203_sha.txt
+            client203_size.txt
+            client203_meta_sha.txt
+            client203_meta_size.txt
+            hud203_sha.txt
+            hud203_size.txt
+          retention-days: 30
+          if-no-files-found: error
