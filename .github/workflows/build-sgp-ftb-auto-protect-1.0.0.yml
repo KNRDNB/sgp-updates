@@ -1,0 +1,18 @@
+name: Build SGP FTB Spawn Guard Auto Protect 1.0.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-sgp-ftb-auto-protect-1.0.0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic event test and NeoForge build
+        run: bash release-staging/2.0.4-test.2/ci_build_auto_protect.sh
