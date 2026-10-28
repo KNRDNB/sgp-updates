@@ -1,0 +1,18 @@
+name: Probe Spawn Guard 1.0.4 API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-spawn-guard-1.0.4.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact JAR API
+        run: bash release-staging/2.0.4-test.2/probe_spawn_guard.sh
