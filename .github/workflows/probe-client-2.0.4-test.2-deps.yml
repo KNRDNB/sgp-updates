@@ -1,0 +1,17 @@
+name: Probe SGP Client 2.0.4-test.2 exact dependency APIs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-client-2.0.4-test.2-deps.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact FTB Chunks and Spawn Guard API contracts
+        run: |
+          bash release-staging/2.0.4-test.2/probe_ftb_claim_event.sh
+          bash release-staging/2.0.4-test.2/probe_spawn_guard.sh
