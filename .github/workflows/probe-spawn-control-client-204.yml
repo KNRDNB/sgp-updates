@@ -1,0 +1,13 @@
+name: Probe Spawn Guard 1.0.4 Client Paths
+on:
+  push:
+    paths:
+      - '.github/workflows/probe-spawn-control-client-204.yml'
+      - 'release-staging/2.0.5/probe_spawn_control_client.sh'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact Spawn Guard client paths
+        run: bash release-staging/2.0.5/probe_spawn_control_client.sh
