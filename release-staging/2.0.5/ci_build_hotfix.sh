@@ -46,8 +46,15 @@ grep -Fq 'static synchronized boolean set(org.ftb_chunks_mobs_spawn_control.ftb_
 
 # The production auto-claim path must not perform the fragile second FTB manager lookup.
 ! grep -Fq 'atChunk' "$MODROOT/src/main/java/sgp/ftbspawnguard/AutoProtectHook.java"
-! grep -Fq 'atChunk' "$MODROOT/src/main/java/sgp/ftbspawnguard/SpawnGuardAccess.java" || \
-  test "$(grep -c 'atChunk' "$MODROOT/src/main/java/sgp/ftbspawnguard/SpawnGuardAccess.java")" = "2"
+python3 - <<'PY'
+from pathlib import Path
+p=Path("release-staging/2.0.5/compatmod/src/main/java/sgp/ftbspawnguard/SpawnGuardAccess.java").read_text()
+segment=p.split("static Object contextFromClaim",1)[1].split("static boolean setProtected",1)[0]
+assert "atChunk" not in segment, "auto-claim path must not use atChunk"
+manual=p.split("static int executeGuiToggle",1)[1]
+assert "atChunk" in manual, "manual toggle may use stable post-claim lookup"
+print("SGP_FTB_205_CONTEXT_PATH_AUDIT_PASS")
+PY
 grep -Fq 'contextFromClaim' "$MODROOT/src/main/java/sgp/ftbspawnguard/AutoProtectHook.java"
 grep -Fq 'getTeamData' "$MODROOT/src/main/java/sgp/ftbspawnguard/SpawnGuardAccess.java"
 grep -Fq 'getDeclaredConstructor' "$MODROOT/src/main/java/sgp/ftbspawnguard/SpawnGuardAccess.java"
