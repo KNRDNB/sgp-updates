@@ -1,0 +1,20 @@
+name: Publish SGP Client 2.0.4 Stable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.0.4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from exact TEST payload, audit, publish and live-verify stable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.4/ci_publish_stable.sh
