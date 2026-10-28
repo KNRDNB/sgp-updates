@@ -1,0 +1,30 @@
+name: Build SGP FTB Hotfix 1.0.2 Candidate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-ftb-hotfix-1.0.2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and audit Architectury registration hotfix candidate
+        run: bash release-staging/2.0.6/ci_build_hotfix.sh
+      - name: Upload exact candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-ftb-auto-protect-1.0.2-candidate
+          if-no-files-found: error
+          path: |
+            SGP-FTB-Spawn-Guard-Auto-Protect-1.0.2.jar
+            sgp206_addon_sha.txt
+            sgp206_addon_size.txt
+            sgp206-addon-files.txt
+            sgp206-event-access-javap.txt
+            sgp206-auto-hook-javap.txt

@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="sgp_ftb_spawn_guard_auto_protect"
+version="1.0.2"
+displayName="SGP FTB Spawn Guard Auto Protect"
+authors="SGP"
+description='''Dedicated-safe FTB claim auto-protection and command-spam-free manual Mob Control toggles; Architectury registration fixed.'''
+
+[[mixins]]
+config="sgp_ftb_spawn_guard_auto_protect.mixins.json"
+
+[[dependencies.sgp_ftb_spawn_guard_auto_protect]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.249,21.1.250)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_ftb_spawn_guard_auto_protect]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_ftb_spawn_guard_auto_protect]]
+modId="ftbchunks"
+type="required"
+versionRange="[2101.1.22,2101.1.23)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.sgp_ftb_spawn_guard_auto_protect]]
+modId="ftb_chunks_mobs_spawn_control"
+type="required"
+versionRange="[1.0.4,1.0.5)"
+ordering="AFTER"
+side="BOTH"

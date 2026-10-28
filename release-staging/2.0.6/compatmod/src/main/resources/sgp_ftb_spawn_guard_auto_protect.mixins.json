@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "sgp.ftbspawnguard.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "SpawnGuardClientEventsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
