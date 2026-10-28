@@ -1,0 +1,29 @@
+# FTB Chunks Mobs Spawn Control
+# SGP: protected claimed chunks block only natural hostile mob spawning.
+
+[filtering]
+filterMode = "HOSTILE_ONLY"
+entityWhitelist = []
+entityBlacklist = []
+
+[dimensions]
+dimensionFilterMode = "ALL"
+dimensionWhitelist = []
+dimensionBlacklist = []
+
+[blockedSpawnReasons]
+blockNatural = true
+blockSpawner = false
+blockPatrol = false
+blockRaid = false
+blockStructure = false
+
+[exceptions]
+allowSpawnEgg = true
+allowCommand = true
+allowBreeding = true
+allowBucket = true
+allowDispenser = true
+allowNamedMobs = false
+allowPersistentMobs = false
+strictJoinFallback = false
