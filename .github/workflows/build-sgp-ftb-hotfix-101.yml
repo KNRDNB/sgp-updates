@@ -3,7 +3,9 @@ on:
   push:
     paths:
       - '.github/workflows/build-sgp-ftb-hotfix-101.yml'
-      - 'release-staging/2.0.5/**'
+      - 'release-staging/2.0.5/ci_build_hotfix.sh'
+      - 'release-staging/2.0.5/compatmod/**'
+      - 'release-staging/2.0.5/test-harness/**'
 jobs:
   build:
     runs-on: ubuntu-latest
