@@ -1,0 +1,21 @@
+name: Publish SGP Client 2.0.5 Stable
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.0.5.yml"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bind audited hotfix addon, build, publish and live-verify stable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.5/ci_publish_stable.sh
