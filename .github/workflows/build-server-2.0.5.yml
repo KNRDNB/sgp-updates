@@ -1,0 +1,36 @@
+name: Build SGP Server 2.0.5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-server-2.0.5.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and audit exact server 2.0.5 production overlay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release-staging/server-2.0.5/build_server_205.py | tee build-server-205.txt
+      - name: Upload exact server handoff artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-server-2.0.5-handoff
+          if-no-files-found: error
+          path: |
+            SGP_ServerPatch_2.0.5.zip
+            build-server-205.txt
+            server205_sha.txt
+            server205_size.txt
+            server205_pack_sha.txt
+            server205_pack_size.txt
+            server205_history_sha.txt
+            server205_history_size.txt
+            server205_delete.txt
