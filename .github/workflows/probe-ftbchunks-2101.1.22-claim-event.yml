@@ -1,0 +1,18 @@
+name: Probe FTB Chunks 2101.1.22 Claim Event
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-ftbchunks-2101.1.22-claim-event.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect exact FTB Chunks claim API
+        run: bash release-staging/2.0.4-test.2/probe_ftb_claim_event.sh
