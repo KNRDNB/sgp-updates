@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
 ROOT="release-staging/2.0.5"
 MODROOT="$ROOT/compatmod"
