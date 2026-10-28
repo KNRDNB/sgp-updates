@@ -24,7 +24,7 @@ def sha_file(path: pathlib.Path) -> str:
 assert ADDON.is_file(), ADDON
 addon_sha = sha_file(ADDON)
 addon_size = ADDON.stat().st_size
-expected_addon_sha = pathlib.Path("sgp205_addon_sha.txt").read_text("utf-8").strip()
+expected_addon_sha = pathlib.Path("sgp205_addon_sha.txt").read_text("utf-8").split()[0]
 expected_addon_size = int(pathlib.Path("sgp205_addon_size.txt").read_text("utf-8").strip())
 assert addon_sha == expected_addon_sha
 assert addon_size == expected_addon_size
