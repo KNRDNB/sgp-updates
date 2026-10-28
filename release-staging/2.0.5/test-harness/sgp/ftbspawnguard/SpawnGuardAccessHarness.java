@@ -25,7 +25,7 @@ public final class SpawnGuardAccessHarness {
         assertStatic(store, "calls", 1);
         assertStatic(store, "last", context);
 
-        Object player = new Object();
+        FakePlayer player = new FakePlayer(level);
         int result = SpawnGuardAccess.executeGuiToggle(player, 7, -9);
         if (result != 1) throw new AssertionError("executeGuiToggle result=" + result);
         Class<?> bridge = Class.forName("org.ftb_chunks_mobs_spawn_control.ftb_chunks_mobs_spawn_control.CommandBridge");
@@ -61,6 +61,7 @@ public final class SpawnGuardAccessHarness {
         @Override public String toString() { return id; }
     }
     public record FakeSource(FakeLevel level) { public FakeLevel getLevel() { return level; } }
+    public record FakePlayer(FakeLevel level) { public FakeLevel serverLevel() { return level; } }
     public record FakePos(int x, int z) {}
     public record FakeTeam(UUID id) { public UUID getTeamId() { return id; } }
     public record FakeTeamData(FakeTeam team) { public FakeTeam getTeam() { return team; } }
