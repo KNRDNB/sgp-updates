@@ -1,0 +1,20 @@
+name: Build SGP FTB Hotfix 1.0.1
+on:
+  push:
+    paths:
+      - '.github/workflows/build-sgp-ftb-hotfix-101.yml'
+      - 'release-staging/2.0.5/**'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and audit hotfix addon
+        run: bash release-staging/2.0.5/ci_build_hotfix.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sgp-ftb-auto-protect-1.0.1
+          path: |
+            SGP-FTB-Spawn-Guard-Auto-Protect-1.0.1.jar
+            sgp205_addon_sha.txt
+            sgp205_addon_size.txt
