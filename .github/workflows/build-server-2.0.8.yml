@@ -1,0 +1,34 @@
+name: Build SGP Server 2.0.8
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-server-2.0.8.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and audit exact server 2.0.8 overlay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release-staging/server-2.0.8/build_server_208.py | tee build-server-208.txt
+      - name: Upload exact server handoff artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-server-2.0.8-handoff
+          if-no-files-found: error
+          path: |
+            SGP_ServerPatch_2.0.8.zip
+            build-server-208.txt
+            server208_sha.txt
+            server208_size.txt
+            server208_pack_sha.txt
+            server208_pack_size.txt
+            server208_history_sha.txt
+            server208_history_size.txt
+            server208_fixes_sha.txt
+            server208_fixes_size.txt
