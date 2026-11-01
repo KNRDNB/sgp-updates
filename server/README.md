@@ -1,0 +1,13 @@
+# Официальный серверный канал SGP
+
+Канал dedicated server отделён от клиента и Installer. Стабильная версия: `server-vX.Y.Z`, ровно `SGP_ServerPatch_X.Y.Z.zip` + `SGP_ServerPatch_X.Y.Z.meta.json`. GitHub global Latest не используется. `server/latest.json` — ограниченный строгий указатель активации, с точным SHA-256/размером метаданных; метаданные связывают ZIP SHA-256/размер/имя, серверную identity, source/target версии, minInstallerVersion, exact deletions, русский changelog и backupMode.
+
+ZIP остаётся декларативным root-overlay, включая final manual-release `.sgp/pack.json` и `.sgp/history.json`. Запрещены shell/scripts/hooks/EXE, произвольные URLs и рекурсивные удаления. Состояние `.sgp` не подделывается: Installer создаёт собственную транзакционную lineage только при реальной установке. Старый ручной способ остаётся историческим фактом и способом ручного восстановления.
+
+Нельзя строить серверные пакеты во время client TEST. Packaging начинается только после явного решения владельца о релизе. Публикация использует уже завершённую успешную authorized handoff-сборку и её точный артефакт: workflow `publish-server-release.yml` требует строку `RELEASE SERVER X.Y.Z`, build run/artifact, canonical ZIP SHA/size, проверенные fromVersions/deletions, backup-risk mode и русский changelog. Публикация сама никогда не rebuild/repack.
+
+Порядок: strict guard → Draft → скачать и проверить exact Draft assets → public stable (`latest=false`) → проверить canonical public downloads → обновить `server/latest.json` последним → проверить static binding. При failure до принятия restore pointer и вернуть новый release в Draft. Не заменять assets существующих accepted releases. При прерывании использовать сохранённый release ID/evidence и продолжать, не создавать новый release и не передавать ZIP заново без причины.
+
+Обычный `backupMode=files`: транзакционная копия изменяемых файлов, свежий panel backup рекомендуется. `snapshot` обязателен при риске для мира, persistent data, worldgen, Minecraft/NeoForge; режим выбирается после аудита состава, filename-эвристика не заменяет review. Свежий panel snapshot и ручная остановка подтверждаются перед destructive operation. SFTP не управляет процессом и не передаёт весь мир ради обычного changed-files backup.
+
+Начальный 2.0.10 — только прежний immutable handoff ZIP (run 41298990355, artifact 13079629137), SHA-256 `6c2835347f8b724fbd50aa38c293a2c32797a7ce75d3d996d9f562a825cb4da7`, 7,957,178 bytes. Источник 2.0.9, backupMode=snapshot из-за RU worldgen. Установка или runtime PASS не возникают от одной публикации канала. Installed/accepted-good 2.0.10 остаётся подтверждённым прежним ручным handoff + owner production report.

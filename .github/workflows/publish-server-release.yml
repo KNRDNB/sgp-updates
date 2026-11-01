@@ -1,0 +1,71 @@
+name: Publish explicitly authorized exact SGP server handoff
+on:
+  workflow_dispatch:
+    inputs:
+      version: {description: 'Stable server version', required: true, type: string}
+      authorization: {description: 'Exact owner authorization: RELEASE SERVER X.Y.Z', required: true, type: string}
+      build_run_id: {description: 'Successful authorized handoff build run', required: true, type: string}
+      artifact_name: {description: 'Exact retained handoff artifact name', required: true, type: string}
+      sha256: {description: 'Canonical inner ZIP SHA-256', required: true, type: string}
+      size: {description: 'Canonical inner ZIP byte size', required: true, type: string}
+      from_versions: {description: 'Reviewed exact compatible source array (JSON)', required: true, type: string}
+      deletions: {description: 'Reviewed exact relative deletion array (JSON)', required: true, type: string}
+      backup_mode: {description: 'Reviewed world/persistent/platform/worldgen risk', required: true, type: choice, options: [snapshot, files]}
+      changelog: {description: 'Bounded Russian plain-text changelog', required: true, type: string}
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: sgp-server-channel-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+      AUTHORIZATION: ${{ inputs.authorization }}
+      BUILD_RUN: ${{ inputs.build_run_id }}
+      ARTIFACT_NAME: ${{ inputs.artifact_name }}
+      EXPECTED_SHA: ${{ inputs.sha256 }}
+      EXPECTED_SIZE: ${{ inputs.size }}
+      FROM_VERSIONS: ${{ inputs.from_versions }}
+      DELETIONS: ${{ inputs.deletions }}
+      BACKUP_MODE: ${{ inputs.backup_mode }}
+      CHANGELOG: ${{ inputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate explicit authorization and successful build identity
+        run: |
+          python3 - <<'PY'
+          import os,re,json,subprocess
+          assert re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)',os.environ['VERSION'])
+          assert os.environ['AUTHORIZATION']=='RELEASE SERVER '+os.environ['VERSION']
+          assert re.fullmatch(r'[0-9]+',os.environ['BUILD_RUN'])
+          run=json.loads(subprocess.check_output(['gh','api','repos/KNRDNB/sgp-updates/actions/runs/'+os.environ['BUILD_RUN']]))
+          assert run['conclusion']=='success' and run['head_repository']['full_name']=='KNRDNB/sgp-updates'
+          assert run['path'].startswith('.github/workflows/build-server-')
+          open('build-binding.json','w').write(json.dumps({k:run[k] for k in ['id','head_sha','path','conclusion']}))
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+          path: handoff
+      - name: Strict exact ZIP audit and metadata (no rebuild/repack)
+        run: |
+          printf '%s' "$DELETIONS" > deletions.json
+          printf '%s' "$CHANGELOG" > changelog.txt
+          python3 scripts/server-release-guard.py --zip "handoff/SGP_ServerPatch_${VERSION}.zip" --version "$VERSION" --from-versions "$FROM_VERSIONS" --expected-sha "$EXPECTED_SHA" --expected-size "$EXPECTED_SIZE" --deletions deletions.json --changelog changelog.txt --backup-mode "$BACKUP_MODE" --output channel
+      - name: Draft, exact downloaded Draft verification, public verification, activate pointer last
+        run: python3 scripts/publish-server-channel.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-${{ inputs.version }}-publication-evidence
+          if-no-files-found: error
+          path: |
+            channel/
+            build-binding.json
+            publication-state.json
