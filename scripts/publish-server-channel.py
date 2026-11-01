@@ -13,17 +13,35 @@ def save(): (root/'publication-state.json').write_bytes(guard.json_bytes(state))
 def digest(path):
     with path.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 try:
-    existing=subprocess.run(['gh','release','view',tag,'--repo',repo],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-    guard.require(existing.returncode!=0,'Existing server release is immutable; inspect and resume from evidence, never overwrite')
-    # --latest=false preserves the independent client/Installer selection semantics.
-    gh('release','create',tag,'--repo',repo,'--draft','--latest=false','--title','SGP Сервер '+version,'--notes-file',str(root/'changelog.txt'))
-    release=json.loads(gh('api',f'repos/{repo}/releases/tags/{tag}')); state['draftId']=release['id']; save()
-    gh('release','upload',tag,'--repo',repo,str(zip_path),str(meta_path))
-    verify=root/'draft-verified'; verify.mkdir()
-    gh('release','download',tag,'--repo',repo,'--dir',str(verify))
-    for source in (zip_path,meta_path):guard.require(digest(verify/source.name)==digest(source) and (verify/source.name).stat().st_size==source.stat().st_size,'Draft asset byte mismatch')
+    # A Draft need not have a tag object yet. Retain its ID; never address it via /tags/.
+    snapshots=json.loads(gh('api',f'repos/{repo}/releases?per_page=100'))
+    matches=[r for r in snapshots if r['tag_name']==tag]
+    guard.require(len(matches)<=1,'Ambiguous server release')
+    if matches:
+        release=matches[0]
+        guard.require(release['draft'] and not release['prerelease'],'Accepted/public server release is immutable')
+    else:
+        request={'tag_name':tag,'name':'SGP Сервер '+version,'body':(root/'changelog.txt').read_text(encoding='utf-8').strip(),'draft':True,'prerelease':False,'make_latest':'false'}
+        (root/'release-request.json').write_text(json.dumps(request),encoding='utf-8')
+        release=json.loads(gh('api','--method','POST',f'repos/{repo}/releases','--input',str(root/'release-request.json')))
+    state['draftId']=release['id'];save()
+    guard.require(all(a['name'] in (zip_path.name,meta_path.name) for a in release['assets']),'Unexpected Draft asset')
+    assets=list(release['assets'])
+    for source in (zip_path,meta_path):
+        present=[a for a in assets if a['name']==source.name]
+        guard.require(len(present)<=1,'Duplicate Draft asset')
+        if present:
+            guard.require(present[0]['size']==source.stat().st_size and present[0]['digest']=='sha256:'+digest(source),'Existing Draft asset differs; refuse overwrite')
+        else:
+            assets.append(json.loads(gh('api','--method','POST',f'https://uploads.github.com/repos/{repo}/releases/{release["id"]}/assets?name={source.name}','-H','Content-Type: application/octet-stream','--input',str(source))))
+    verify=root/'draft-verified'; verify.mkdir(exist_ok=True)
+    for source in (zip_path,meta_path):
+        asset=next(a for a in assets if a['name']==source.name); retained=verify/source.name
+        if not retained.exists():retained.write_bytes(gh('api',f'repos/{repo}/releases/assets/{asset["id"]}','-H','Accept: application/octet-stream'))
+        guard.require(digest(retained)==digest(source) and retained.stat().st_size==source.stat().st_size,'Draft asset byte mismatch')
     state['draftAssets']='PASS';save()
-    gh('release','edit',tag,'--repo',repo,'--draft=false','--latest=false');public=True
+    (root/'promotion.json').write_text(json.dumps({'draft':False,'prerelease':False,'make_latest':'false'}),encoding='utf-8')
+    gh('api','--method','PATCH',f'repos/{repo}/releases/{state["draftId"]}','--input',str(root/'promotion.json'));public=True
     release=json.loads(gh('api',f'repos/{repo}/releases/{state["draftId"]}'))
     guard.require(not release['draft'] and not release['prerelease'] and release['tag_name']==tag and len(release['assets'])==2,'Public identity mismatch')
     for source in (zip_path,meta_path):
@@ -56,5 +74,5 @@ except Exception:
         (root/'pointer-rollback.json').write_text(json.dumps(rollback),encoding='utf-8')
         gh('api','--method',method,f'repos/{repo}/contents/server/latest.json','--input',str(root/'pointer-rollback.json'))
         pointer_active=False;state['pointerRestored']=True;save()
-    if public:subprocess.run(['gh','release','edit',tag,'--repo',repo,'--draft=true'],check=True)
+    if public:subprocess.run(['gh','api','--method','PATCH',f'repos/{repo}/releases/{state["draftId"]}','-F','draft=true'],check=True)
     raise
