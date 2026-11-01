@@ -1,0 +1,26 @@
+name: Audit Regions Unexplored 0.6.3 Candidate
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-ru-0.6.3.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and audit exact RU 0.6.3 NeoForge 1.21.1
+        run: bash release-staging/2.0.9/ci_audit_ru063.sh
+      - name: Upload exact candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: regions-unexplored-0.6.3-candidate
+          if-no-files-found: error
+          path: |
+            regions-unexplored-0.6.3-neoforge-21.1.jar
+            ru063_sha.txt
+            ru063_size.txt
+            ru063-neoforge.mods.toml
+            ru063-files.txt
