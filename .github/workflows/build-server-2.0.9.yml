@@ -1,0 +1,35 @@
+name: Build SGP Server 2.0.9
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-server-2.0.9.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and audit exact server 2.0.9 RU overlay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release-staging/server-2.0.9/build_server_209.py | tee build-server-209.txt
+      - name: Upload exact server handoff artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-server-2.0.9-handoff
+          if-no-files-found: error
+          path: |
+            SGP_ServerPatch_2.0.9.zip
+            build-server-209.txt
+            server209_sha.txt
+            server209_size.txt
+            server209_pack_sha.txt
+            server209_pack_size.txt
+            server209_history_sha.txt
+            server209_history_size.txt
+            server209_ru_sha.txt
+            server209_ru_size.txt
+            server209_delete.txt
