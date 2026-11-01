@@ -17,3 +17,10 @@ Never modify historical workflows/releases/tags/assets or the pinned corrected
 legacy `v2.0.0` bridge. New publication workflows must invoke this guard before
 creating/promoting Draft. Never publish a client patch merely to activate this
 channel. Use only marked synthetic packs for destructive Installer tests.
+
+
+## Dedicated server channel (owner decision 2026-11-01)
+
+Future finalized server handoffs use durable stable `server-vX.Y.Z` releases with exact `SGP_ServerPatch_X.Y.Z.zip` + strict `.meta.json`; bounded static `server/latest.json` activates last. See `server/README.md`, `scripts/server-release-guard.py` and explicitly dispatched `publish-server-release.yml`. Never rebuild/repack an existing handoff for promotion. Retain run/artifact/SHA/size evidence, use Draft IDs before tag creation, verify downloaded Draft/public bytes, preserve all accepted historical assets. Initial2.0.10 uses original immutable bytes; historical manual installs/accepted-good facts are unchanged.
+
+Explicit owner release authorization is still required before server packaging/publication; do not build server candidates in client TEST iterations or infer authorization from client runtime PASS. Russian changelog, exact deletions/fromVersions/minInstallerVersion, and reviewed `files|snapshot` risk mode are mandatory. Snapshot for world/persistent/worldgen/Minecraft/NeoForge risk; panel Backup/Stop/Start stays manual. Patch data never supplies shell/scripts/commands/arbitrary URLs. Server/client/Installer namespaces and selection remain separate. Installer2.2.0 candidate is not public until its owner visual + read-only live SFTP gates pass.
