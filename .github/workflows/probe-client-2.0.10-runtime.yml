@@ -1,0 +1,29 @@
+name: Probe SGP 2.0.10 Corrective Runtime
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/probe-client-2.0.10-runtime.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Minimal NeoForge dedicated-server startup probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.10/ci_runtime_probe.sh
+      - name: Upload probe log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-2.0.10-runtime-probe
+          if-no-files-found: warn
+          path: probe/probe.log
