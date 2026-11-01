@@ -54,3 +54,8 @@ Authoritative product context: private `KNRDNB/sgp-context` and
 the context repository.
 
 Release title is `SGP Client X.Y.Z` (or `SGP Client X.Y.Z-test.N`); the `client-v...` tag remains the authoritative release identity.
+
+
+## Серверный канал
+
+Официальный dedicated-server канал: stable `server-vX.Y.Z`, exact ZIP + strict metadata, bounded static `server/latest.json`. [Правила публикации и ручных gates](server/README.md). Исходный immutable server2.0.10 доступен как durable public baseline; файл и историческая ручная lineage сохранены byte-for-byte. Candidate Installer2.2.0 добавляет ограниченный SFTP updater, Backup/Stop/Start остаются ручными; Installer2.2.0 пока не опубликован. Клиентский и Installer каналы независимы.
