@@ -1,0 +1,30 @@
+name: Audit SGP 2.0.10 Corrective Candidates
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-client-2.0.10-candidates.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and audit Lithostitched + Every Compat candidates
+        run: bash release-staging/2.0.10/ci_audit_candidates.sh
+      - name: Upload exact audited candidates
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-2.0.10-candidates
+          if-no-files-found: error
+          path: |
+            lithostitched-1.8.1-neoforge-21.1.jar
+            everycomp-1.21-2.11.55-neoforge.jar
+            litho.mods.toml
+            every.mods.toml
+            litho-files.txt
+            litho_sha.txt
+            litho_size.txt
+            every_sha.txt
+            every_size.txt
