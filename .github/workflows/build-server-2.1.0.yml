@@ -1,0 +1,27 @@
+name: Build and audit SGP Server 2.1.0 JourneyMap
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-server-2.1.0.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from exact published 2.0.10 metadata and official JourneyMap JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release-staging/server-2.1.0/build_server_2100.py | tee build-server-2100.txt
+      - name: Upload audited server-only root overlay (no TEST, no public release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sgp-server-2.1.0-journeymap-handoff
+          if-no-files-found: error
+          path: |
+            SGP_ServerPatch_2.1.0.zip
+            server2100_audit.json
+            build-server-2100.txt
