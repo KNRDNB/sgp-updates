@@ -1,0 +1,72 @@
+name: One-shot authorized publish SGP Server 2.1.0
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-server-2.1.0-authorized.yml"
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: sgp-server-channel-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: "2.1.0"
+      AUTHORIZATION: "RELEASE SERVER 2.1.0"
+      BUILD_RUN: "42294964151"
+      ARTIFACT_NAME: "sgp-server-2.1.0-journeymap-handoff"
+      EXPECTED_SHA: "ce27ea4e157d7d2138609b29ba20768edf220fc21996bd7c6e64c00e24dd8e51"
+      EXPECTED_SIZE: "3847313"
+      FROM_VERSIONS: '["2.0.10"]'
+      BACKUP_MODE: "files"
+      CHANGELOG: "Добавлен JourneyMap 6.0.8 на dedicated server для серверной поддержки карты и отображения игроков. Клиент не изменяется. Удалений нет."
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate explicit owner authorization and audited build identity
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          assert os.environ["AUTHORIZATION"] == "RELEASE SERVER " + os.environ["VERSION"]
+          assert re.fullmatch(r"[0-9]+", os.environ["BUILD_RUN"])
+          run=json.loads(subprocess.check_output(["gh","api","repos/KNRDNB/sgp-updates/actions/runs/"+os.environ["BUILD_RUN"]]))
+          assert run["conclusion"]=="success"
+          assert run["head_repository"]["full_name"]=="KNRDNB/sgp-updates"
+          assert run["path"]==".github/workflows/build-server-2.1.0.yml"
+          open("build-binding.json","w").write(json.dumps({k:run[k] for k in ["id","head_sha","path","conclusion"]}))
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: sgp-server-2.1.0-journeymap-handoff
+          run-id: 42294964151
+          github-token: ${{ github.token }}
+          path: handoff
+      - name: Strict exact ZIP audit and metadata
+        run: |
+          printf '%s' '[]' > deletions.json
+          printf '%s' "$CHANGELOG" > changelog.txt
+          python3 scripts/server-release-guard.py \
+            --zip "handoff/SGP_ServerPatch_2.1.0.zip" \
+            --version "2.1.0" \
+            --from-versions "$FROM_VERSIONS" \
+            --expected-sha "$EXPECTED_SHA" \
+            --expected-size "$EXPECTED_SIZE" \
+            --deletions deletions.json \
+            --changelog changelog.txt \
+            --backup-mode "$BACKUP_MODE" \
+            --output channel
+      - name: Draft, verify exact assets, publish stable, activate pointer last
+        run: python3 scripts/publish-server-channel.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-2.1.0-publication-evidence
+          if-no-files-found: error
+          path: |
+            channel/
+            build-binding.json
+            publication-state.json
+            changelog.txt
