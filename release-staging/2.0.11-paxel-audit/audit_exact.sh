@@ -28,13 +28,14 @@ javap -classpath wands-305.jar -p -s net.nicguzzo.wands.wand.Wand > wands-method
 javap -classpath wands-305.jar -c -p net.nicguzzo.wands.wand.Wand > wands-bytecode.txt
 echo "=== EXACT WANDS MENU CLASSES ==="
 unzip -Z1 wands-305.jar | grep -Ei '(Menu|Screen).class$' | grep -Ei 'Wand|Tool' | head -100 || true
-menu_class="$(unzip -Z1 wands-305.jar | grep -E '/WandToolsMenu.class$' | head -1 | sed -e 's@/@.@g' -e 's@\.class$@@' || true)"
+menu_class="$(unzip -Z1 wands-305.jar | grep -E '/Wand(Menu|ToolsMenu).class$' | head -1 | sed -e 's@/@.@g' -e 's@\.class$@@' || true)"
 if [ -n "$menu_class" ]; then
   javap -classpath wands-305.jar -c -p "$menu_class" > wands-menu-bytecode.txt
 else
   echo "MENU CLASS NOT FOUND" > wands-menu-bytecode.txt
 fi
 javap -classpath wands-305.jar -c -p net.nicguzzo.wands.utils.WandUtils > wands-utils-bytecode.txt
+javap -classpath wands-305.jar -c -p net.nicguzzo.wands.client.screens.WandToolScreen > wands-screen-bytecode.txt
 
 python3 - <<'PY'
 from pathlib import Path
@@ -65,5 +66,21 @@ unzip -Z1 ironworks-403.jar | grep -Ei 'paxel|tags/item/(axes|pickaxes|shovels|h
 
 echo "=== IRONWORKS PAXEL CLASS CANDIDATES ==="
 unzip -Z1 ironworks-403.jar | grep -Ei '(Paxel|Tool|ModItems).*class$' | head -100 || true
+
+echo "=== EXACT IRONWORKS PAXEL CLASS METHODS ==="
+for p in Copper Bronze Brass Iron Gold Diamond Steel Netherite; do
+  javap -classpath ironworks-403.jar -p -c "create_ironworks.item.$p"PaxelItem > "ironworks-$p-paxel-bytecode.txt"
+  grep -E '^public class|^  (public|protected)' "ironworks-$p-paxel-bytecode.txt" | head -35 || true
+done
+
+echo "=== EXACT IRONWORKS PAXEL TAGS ==="
+for name in data/create_ironworks/tags/item/tools/paxels.json data/minecraft/tags/item/axes.json data/minecraft/tags/item/pickaxes.json data/minecraft/tags/item/shovels.json data/minecraft/tags/item/hoes.json data/c/tags/item/pickaxes.json; do
+  echo "$name"
+  unzip -p ironworks-403.jar "$name" 2>/dev/null || true
+  echo
+done
+
+echo "=== EXACT SCREEN / MENU BYTECODE INDICATORS ==="
+grep -n -E 'Tools|clicked|ContainerInput|putIntArray|SendPlayerData|sendToServer|getIntArray' wands-menu-bytecode.txt wands-screen-bytecode.txt | head -140 || true
 
 echo "EXACT_WANDS_PAXEL_AUDIT_COMPLETE"
