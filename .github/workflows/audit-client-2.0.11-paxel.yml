@@ -1,0 +1,28 @@
+name: Audit exact Building Wands 3.0.5 and Create Ironworks 4.0.3 for paxel fix
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-client-2.0.11-paxel.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact upstream JAR and bytecode audit
+        run: bash release-staging/2.0.11-paxel-audit/audit_exact.sh > audit-exact.log 2>&1 || { tail -n 250 audit-exact.log; exit 1; }
+      - name: Show exact bytecode report
+        run: cat audit-exact.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sgp-2011-paxel-exact-audit
+          if-no-files-found: warn
+          path: |
+            audit-exact.log
+            .sgp-paxel-audit/wands-method-descriptors.txt
+            .sgp-paxel-audit/wands-bytecode.txt
+            .sgp-paxel-audit/wands-menu-bytecode.txt
+            .sgp-paxel-audit/wands-utils-bytecode.txt
