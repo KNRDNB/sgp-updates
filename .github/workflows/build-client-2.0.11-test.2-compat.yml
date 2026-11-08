@@ -1,0 +1,27 @@
+name: Build SGP Wands Paxel Compat 1.0.2 for 2.0.11 TEST2
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-client-2.0.11-test.2-compat.yml"
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and statically audit compat
+        run: bash release-staging/2.0.11-test.2/ci_build_compat.sh | tee build-paxel-compat.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sgp-wands-paxel-compat-1.0.2-candidate
+          if-no-files-found: error
+          path: |
+            SGP-Wands-Paxel-Compat-1.0.2.jar
+            paxel_compat_sha.txt
+            paxel_compat_size.txt
+            paxel-compat-files.txt
+            paxel-ids-javap.txt
+            paxel-mixin-javap.txt
+            build-paxel-compat.txt
