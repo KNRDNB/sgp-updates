@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/audit-client-2.0.11-paxel.yml"
+      - "release-staging/2.0.11-paxel-audit/**"
 permissions:
   contents: read
 jobs:
