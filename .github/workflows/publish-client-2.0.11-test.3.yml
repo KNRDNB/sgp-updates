@@ -1,0 +1,35 @@
+name: Publish SGP Client 2.0.11-test.3 Quartz Glass corrective TEST
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.0.11-test.3.yml"
+permissions:
+  contents: write
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build glass compat, package, guard, publish, live-verify and retire failed test.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.11-test.3/ci_publish_test3.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sgp-client-2.0.11-test.3-evidence
+          if-no-files-found: error
+          path: |
+            SGP_ClientPatch_2.0.11-test.3.zip
+            SGP_ClientPatch_2.0.11-test.3.meta.json
+            SGP-Wands-Paxel-Compat-1.0.2.jar
+            SGP-BetterNether-Quartz-Glass-Compat-1.0.0.jar
+            client2011_test3_audit.json
+            release-client-2011-test3-result.txt
+            build-client-2011-test3.txt
+            glass_compat_sha.txt
+            glass_compat_size.txt
+            glass-compat-files.txt
+            glass-ids-javap.txt
+            glass-mixin-javap.txt
