@@ -1,0 +1,31 @@
+name: Build-only SGP Paxel Compat 1.0.3 for client 2.0.11-test.4
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-client-2.0.11-test.4-paxel.yml"
+      - "release-staging/2.0.11-test.4/compatmod/**"
+      - "release-staging/2.0.11-test.4/test-harness/**"
+      - "release-staging/2.0.11-test.4/ci_build_paxel.sh"
+permissions:
+  contents: read
+jobs:
+  build-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build 1.0.3 and audit exact bytecode without publishing
+        run: bash release-staging/2.0.11-test.4/ci_build_paxel.sh | tee build-paxel103.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sgp-wands-paxel-1.0.3-build-only
+          if-no-files-found: warn
+          path: |
+            SGP-Wands-Paxel-Compat-1.0.3.jar
+            paxel103-*.txt
+            paxel103-*.toml
+            paxel103-*.json
+            paxel103-sha.txt
+            paxel103-size.txt
+            build-paxel103.log
