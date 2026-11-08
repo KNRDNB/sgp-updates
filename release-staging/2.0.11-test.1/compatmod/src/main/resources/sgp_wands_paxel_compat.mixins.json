@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.nicguzzo.wands.wand",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "SgpWandsPaxelCompatMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
