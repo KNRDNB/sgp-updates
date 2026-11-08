@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": "2.1.0",
-  "tag": "server-v2.1.0",
-  "metadataName": "SGP_ServerPatch_2.1.0.meta.json",
-  "metadataSha256": "688963decce5a72cfeff0e9dfc67c89774234c9915859f9d523bd48bc44cf7ec",
-  "metadataSize": 693
+  "version": "2.1.1",
+  "tag": "server-v2.1.1",
+  "metadataName": "SGP_ServerPatch_2.1.1.meta.json",
+  "metadataSha256": "63fdbb4f182b8e5571c8b0a028050b57e108a948e488a410cef0e2b093301f1c",
+  "metadataSize": 1476
 }
