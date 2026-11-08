@@ -1,0 +1,27 @@
+name: Build SGP BetterNether Quartz Glass Compat for 2.0.11 TEST3
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-client-2.0.11-test.3-glass.yml"
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and audit glass compat
+        run: bash release-staging/2.0.11-test.3/ci_build_glass_compat.sh | tee build-glass-compat.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sgp-betternether-quartz-glass-compat-1.0.0-candidate
+          if-no-files-found: error
+          path: |
+            SGP-BetterNether-Quartz-Glass-Compat-1.0.0.jar
+            glass_compat_sha.txt
+            glass_compat_size.txt
+            glass-compat-files.txt
+            glass-ids-javap.txt
+            glass-mixin-javap.txt
+            build-glass-compat.txt
