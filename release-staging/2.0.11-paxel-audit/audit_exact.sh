@@ -27,7 +27,13 @@ unzip -Z1 wands-305.jar | grep -E 'WandTool|wand/Wand.class|WandToolsMenu|WandUt
 javap -classpath wands-305.jar -p -s net.nicguzzo.wands.wand.Wand > wands-method-descriptors.txt
 javap -classpath wands-305.jar -c -p net.nicguzzo.wands.wand.Wand > wands-bytecode.txt
 echo "=== EXACT WANDS MENU CLASSES ==="
-unzip -Z1 wands-305.jar | grep -Ei 'Menu.class$|Screen.class
+unzip -Z1 wands-305.jar | grep -Ei '(Menu|Screen).class$' | grep -Ei 'Wand|Tool' | head -100 || true
+menu_class="$(unzip -Z1 wands-305.jar | grep -E '/WandToolsMenu.class$' | head -1 | sed -e 's@/@.@g' -e 's@\.class$@@' || true)"
+if [ -n "$menu_class" ]; then
+  javap -classpath wands-305.jar -c -p "$menu_class" > wands-menu-bytecode.txt
+else
+  echo "MENU CLASS NOT FOUND" > wands-menu-bytecode.txt
+fi
 javap -classpath wands-305.jar -c -p net.nicguzzo.wands.utils.WandUtils > wands-utils-bytecode.txt
 
 python3 - <<'PY'
