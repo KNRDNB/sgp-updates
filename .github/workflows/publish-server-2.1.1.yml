@@ -1,0 +1,38 @@
+name: Publish SGP Server 2.1.1 approved paxel parity
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-server-2.1.1.yml"
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: sgp-server-channel-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bind exact prior handoff, run canonical guard, publish stable, activate pointer last
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash release-staging/server-2.1.1/ci_publish_server_211.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sgp-server-2.1.1-publication-evidence
+          if-no-files-found: warn
+          path: |
+            handoff/server211_audit.json
+            handoff/SGP_ServerPatch_2.1.1.zip
+            channel/
+            changelog.txt
+            from-versions.json
+            deletions.json
+            publication-state.json
+            publication-server-211.log
+            server211-public-evidence.txt
