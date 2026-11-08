@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="sgp_betternether_quartz_glass_compat"
+version="1.0.0"
+displayName="SGP BetterNether Quartz Glass Compat"
+authors="SGP"
+description='''Uses the NeoForge/Sodium fluid overlay path for BetterNether Quartz Glass family so water does not use the flowing side texture behind the glass. Original BetterNether textures and alpha are untouched.'''
+
+[[mixins]]
+config="sgp_betternether_quartz_glass_compat.mixins.json"
+
+[[dependencies.sgp_betternether_quartz_glass_compat]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.249,21.2)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.sgp_betternether_quartz_glass_compat]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.sgp_betternether_quartz_glass_compat]]
+modId="sodium"
+type="required"
+versionRange="[0.8.13,0.9)"
+ordering="AFTER"
+side="CLIENT"
+
+[[dependencies.sgp_betternether_quartz_glass_compat]]
+modId="betternether"
+type="required"
+versionRange="[21.0.27,21.1)"
+ordering="AFTER"
+side="CLIENT"
