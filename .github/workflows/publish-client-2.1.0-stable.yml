@@ -1,0 +1,30 @@
+name: Publish SGP Client 2.1.0 stable from owner-runtime-PASS TEST
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.1.0-stable.yml"
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build from tested ZIP, guard, publish stable and live-public verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.1.0/ci_publish_stable.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sgp-client-2.1.0-stable-release-evidence
+          if-no-files-found: warn
+          path: |
+            SGP_ClientPatch_2.1.0.zip
+            SGP_ClientPatch_2.1.0.meta.json
+            client210_stable_audit.json
+            client210-stable-build.log
+            client210-stable-public-evidence.txt
+            notes-210-stable.md
