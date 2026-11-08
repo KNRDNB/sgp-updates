@@ -1,0 +1,30 @@
+name: Retire superseded client TEST 2.0.4-test.2
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/retire-old-client-test-2.0.4-test.2.yml"
+permissions:
+  contents: write
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify current TEST exists and remove only superseded test.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/KNRDNB/sgp-updates/releases/tags/client-v2.0.11-test.1 --jq 'select(.draft==false and .prerelease==true and .id==438313856) | .tag_name' | grep -Fx 'client-v2.0.11-test.1'
+          gh api repos/KNRDNB/sgp-updates/releases/tags/client-v2.0.4-test.2 --jq 'select(.draft==false and .prerelease==true and .id==426385128) | .tag_name' | grep -Fx 'client-v2.0.4-test.2'
+          gh release delete client-v2.0.4-test.2 --repo KNRDNB/sgp-updates --cleanup-tag -y
+          if gh api repos/KNRDNB/sgp-updates/releases/tags/client-v2.0.4-test.2 >/dev/null 2>&1; then
+            echo "Old TEST release still exists" >&2
+            exit 1
+          fi
+          if gh api repos/KNRDNB/sgp-updates/git/ref/tags/client-v2.0.4-test.2 >/dev/null 2>&1; then
+            echo "Old TEST tag still exists" >&2
+            exit 1
+          fi
+          gh api repos/KNRDNB/sgp-updates/releases/tags/client-v2.0.11-test.1 --jq '.id' | grep -Fx '438313856'
+          echo OLD_CLIENT_TEST_204_TEST2_RETIRED_PASS
