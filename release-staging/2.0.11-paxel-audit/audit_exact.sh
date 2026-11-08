@@ -83,4 +83,31 @@ done
 echo "=== EXACT SCREEN / MENU BYTECODE INDICATORS ==="
 grep -n -E 'Tools|clicked|ContainerInput|putIntArray|SendPlayerData|sendToServer|getIntArray' wands-menu-bytecode.txt wands-screen-bytecode.txt | head -140 || true
 
+echo "=== IRONWORKS CONSTRUCTORS + ABILITIES + USE-ON ==="
+python3 - <<'PY'
+from pathlib import Path
+import re
+for tier in ('Copper','Bronze','Brass','Iron','Gold','Diamond','Steel','Netherite'):
+    p=Path('ironworks-'+tier+'-paxel-bytecode.txt')
+    raw=p.read_text()
+    sections=re.split(r'(?=^  (?:public|protected|private) .+\([^;]*\);$)',raw,flags=re.M)
+    wanted=('PaxelItem();','canPerformAction(', 'isCorrectToolForDrops(', 'getDestroySpeed(', 'useOn(')
+    print('\n=========',tier,'=========')
+    for section in sections:
+        first=section.splitlines()[0] if section.strip() else ''
+        if any(x in first for x in wanted):
+            print('\n'.join(section.splitlines()[:125]))
+    print("EXPLICIT_USEON=",any('useOn(' in x.splitlines()[0] for x in sections if x.strip()))
+PY
+echo "=== MOD ITEM REGISTRATION ==="
+javap -classpath ironworks-403.jar -p -c create_ironworks.init.CreateIronworksModItems > ironworks-items-bytecode.txt
+grep -n -Ei 'paxel|tool|tiereditem' ironworks-items-bytecode.txt | head -140 || true
+echo "=== EXACT WANDS MENU CLICK ==="
+python3 - <<'PY'
+from pathlib import Path
+s=Path('wands-menu-bytecode.txt').read_text()
+i=s.find('  public void clicked(')
+j=s.find('\n  ',i+3)
+print(s[i:i+12500] if j<=i else s[i:min(j,i+12500)])
+PY
 echo "EXACT_WANDS_PAXEL_AUDIT_COMPLETE"
