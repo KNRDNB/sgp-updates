@@ -1,0 +1,34 @@
+name: Publish SGP Client 2.0.11-test.2 corrective TEST
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-client-2.0.11-test.2.yml"
+permissions:
+  contents: write
+jobs:
+  build-audit-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build compat, package, guard, publish, live-verify and retire failed test.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash release-staging/2.0.11-test.2/ci_publish_test2.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sgp-client-2.0.11-test.2-evidence
+          if-no-files-found: error
+          path: |
+            SGP_ClientPatch_2.0.11-test.2.zip
+            SGP_ClientPatch_2.0.11-test.2.meta.json
+            SGP-Wands-Paxel-Compat-1.0.2.jar
+            client2011_test2_audit.json
+            release-client-2011-test2-result.txt
+            build-client-2011-test2.txt
+            paxel_compat_sha.txt
+            paxel_compat_size.txt
+            paxel-compat-files.txt
+            paxel-ids-javap.txt
+            paxel-mixin-javap.txt
