@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="sgp_wands_paxel_compat"
+version="1.0.1"
+displayName="SGP Wands Paxel Compat"
+authors="SGP"
+description='''Preserves Building Wands tool semantics for all Create: Ironworks paxels, including glass Replace and axe/shovel Use actions.'''
+
+[[mixins]]
+config="sgp_wands_paxel_compat.mixins.json"
+
+[[dependencies.sgp_wands_paxel_compat]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.249,21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_wands_paxel_compat]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.sgp_wands_paxel_compat]]
+modId="wands"
+type="required"
+versionRange="[3.0.5,3.0.6)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.sgp_wands_paxel_compat]]
+modId="create_ironworks"
+type="required"
+versionRange="[4.0.3,4.1)"
+ordering="AFTER"
+side="BOTH"
